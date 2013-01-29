@@ -9,4 +9,5 @@ def index():
 
 def error():
     return dict()
-
+def test():
+    return 'hi'
