@@ -35,16 +35,25 @@ b='''        sys.exit('Did not get a URI or redirect from the submit GET operati
         curr_ind += batch_size
 '''
 
+# form for entering taxa list
 def enter():
-    form = FORM(INPUT(_name='taxa', 
-                      _type='TEXTAREA',
-                      requires=IS_NOT_EMPTY()),
-                INPUT(_type='submit'),
-                _action=URL('find'))
+    form = SQLFORM.factory(
+        Field('taxalist',requires=IS_NOT_EMPTY()),
+        Field('treestore',requires=IS_IN_SET(['opentree','rdf'])))
+    if form.process().accepted:
+        response.flash='form accepted'
+        session.taxalist=form.vars.taxalist
+        session.treestore=form.vars.treestore
+        redirect(URL('find'))
+    elif form.errors:
+        response.flash='form has errors'
     return dict(form=form)
 
+
+# creates the URL for the TNRS and calls the TNRS
 def find():
-    raw_taxa_str = request.vars.taxa
+    raw_taxa_str=session.taxalist
+    #raw_taxa_str = request.vars.taxa
     taxa_list = [i.strip() for i in raw_taxa_str.split(',')]
     
     #@TEMP should be based on the user's TNRS choice...
@@ -54,6 +63,8 @@ def find():
 
     u = _get_tnrs_uri(submit_uri, taxa_list)
     new_id = db.tax_query.insert(url=u)
+
+    # populate database fields from TNRS call
     for name in taxa_list:
         db.name_from_user.insert(tax_query=new_id,
                                  original_name=name,
@@ -62,6 +73,7 @@ def find():
                                  match_method='')
     return redirect(URL('show', args=(new_id,)))
 
+# Shows results from TNRS call
 def show():
     try:
         q_id = request.args[-1]
