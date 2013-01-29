@@ -76,7 +76,7 @@ def write_resolved_names(submitted_name_list, names_response, outp):
 
 for inp_stream in inp_stream_list:
     name_list = [unicode(line.strip()) for line in inp_stream if len(line.strip()) > 0]
-    batch_size = 1
+    batch_size = 10
     curr_ind = 0
     while curr_ind < len(name_list): 
         end_ind = curr_ind + batch_size

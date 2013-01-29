@@ -9,7 +9,8 @@ def enter():
 def find():
     raw_taxa_str = request.vars.taxa
     taxa_list = [i.strip() for i in raw_taxa_str.split(',')]
-    new_id = db.tax_query.insert(url='bogus')
+
+    new_id = db.tax_query.insert(url='http://api.phylotastic.org/tnrs/retrieve/14b530dae634f330147d0a54089d87ed')
     return redirect(URL('show', args=(new_id,)))
 
 def show():
