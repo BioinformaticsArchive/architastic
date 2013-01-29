@@ -15,3 +15,7 @@ Installation:
   5. You should then see the server at:
 
   	http://127.0.0.1:8000/architastic
+
+  6. To restart the server with the same password, use:
+
+  	$  python web2py.py --nogui -a '<recycle>'
