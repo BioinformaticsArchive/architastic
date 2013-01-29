@@ -85,3 +85,12 @@ use_janrain(auth, filename='private/janrain.key')
 mail.settings.server = settings.email_server
 mail.settings.sender = settings.email_sender
 mail.settings.login = settings.email_login
+
+
+def define_tables(db, migrate=True):
+    db.define_table(
+        'tax_query',
+        Field('url', type='string')
+        )
+
+define_tables(db)
