@@ -54,6 +54,12 @@ def find():
 
     u = _get_tnrs_uri(submit_uri, taxa_list)
     new_id = db.tax_query.insert(url=u)
+    for name in taxa_list:
+        db.name_from_user.insert(tax_query=new_id,
+                                 original_name=name,
+                                 tnrs_json='',
+                                 taxon_uri='',
+                                 match_method='')
     return redirect(URL('show', args=(new_id,)))
 
 def show():
@@ -62,4 +68,6 @@ def show():
         q = db.tax_query[q_id]
     except:
         raise HTTP(404)
-    return q.url
+    name_row_list = db(db.name_from_user.tax_query == q).select()
+    return {'tnrs_url' : q.url,
+            'name_row_list' : name_row_list}
