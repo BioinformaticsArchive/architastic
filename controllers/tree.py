@@ -6,7 +6,10 @@ def _get_tnrs_uri(submit_uri, name_list):
                         params={'query':names_newline_sep},
                         allow_redirects=True)
     resp.raise_for_status()
-    results = resp.json()
+    try:
+        results = resp.json()
+    except:
+        results = resp.json
     retrieve_uri = results.get(u'uri')
     if retrieve_uri:
         return retrieve_uri
