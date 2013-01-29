@@ -1,0 +1,4 @@
+*.pyc
+private
+sessions
+databases

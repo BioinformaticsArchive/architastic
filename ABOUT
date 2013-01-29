@@ -1,0 +1,1 @@
+Adaptor of actions of user's of phylotastic into CQL queries forwarded to one of the phylotastic actors (a treestore, TNRS...).
