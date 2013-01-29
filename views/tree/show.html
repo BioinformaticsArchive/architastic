@@ -1,7 +1,33 @@
 {{extend 'layout.html'}}
 
 <h2>Taxa</h2>
+{{=DIV(tnrs_url, _class='tnrsURL', _id="tnrsURL")}}
 <table>
 	<tr><th>Submitted Name</th><th>TNRS blurb</th><th>taxon URI</th></tr>
-{{for name in name_row_list:}}<tr><td>{{=name.original_name}}</td><td>{{=name.tnrs_json}}</td><td>{{=name.taxon_uri}}</td></tr>{{pass}}
+{{for name in name_row_list:}}<tr><td>{{=name.original_name}}</td><td>{{=DIV(name.tnrs_json, _class='tnrsJsonBlurb', _id=str(name.id))}}</td><td>{{=name.taxon_uri}}</td></tr>{{pass}}
 </table>
+
+<p>TNRS results are/will be from {{=A(tnrs_url, _href=tnrs_url, _class='tnrsURL', _id="tnrsURL")}}</p>
+
+<script type="text/javascript">
+$(document).ready(function(){
+	var f = $(".tnrsJsonBlurb").first();
+	if (f.text() == "") {
+		f.text(f.attr("id"));
+		$.ajax({
+			url : $("#tnrsURL").text(),
+			dataType : 'json',
+			crossDomain : true,
+			contentType : 'application/json',
+			success : function(data, textStatus, jqXHR) {
+				f.text("success");
+			},
+			error : function(jqXHR, textStatus, errorThrown) {
+				$(".flash").html("DOI lookup error: " + jqXHR.responseText).slideDown();
+				f.text("failure");
+			}
+		});
+	}
+
+});
+</script>
