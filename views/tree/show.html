@@ -13,20 +13,24 @@
 $(document).ready(function(){
 	var f = $(".tnrsJsonBlurb").first();
 	if (f.text() == "") {
-		f.text(f.attr("id"));
-		$.ajax({
-			url : $("#tnrsURL").text(),
-			dataType : 'json',
-			crossDomain : true,
-			contentType : 'application/json',
-			success : function(data, textStatus, jqXHR) {
-				f.text("success");
-			},
-			error : function(jqXHR, textStatus, errorThrown) {
-				$(".flash").html("DOI lookup error: " + jqXHR.responseText).slideDown();
-				f.text("failure");
-			}
-		});
+		var turl = $("#tnrsURL").text();
+		f.text(turl);
+		var xobj = new XMLHttpRequest();
+		xobj.onreadystatechange = function() {
+  			if (xobj.readyState==4) {
+  				if ( xobj.status==200) {
+    				f.text("success");
+    			}
+    			else {
+					$(".flash").html("TNRS lookup failure.").slideDown();
+					f.text("failure");
+				}
+    		}
+  		}
+		xobj.open('GET', turl, true);
+    	xobj.setRequestHeader("Accept", "");
+    	xobj.setRequestHeader("Content-Type","application/json");
+    	xobj.send();
 	}
 
 });
