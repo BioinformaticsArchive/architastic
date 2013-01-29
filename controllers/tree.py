@@ -5,3 +5,5 @@ def test():
                 INPUT(_type='submit'),
                 _action=URL('second'))
     return dict(form=form)
+def second():
+    return request.vars.taxa

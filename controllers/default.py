@@ -10,4 +10,9 @@ def index():
 def error():
     return dict()
 def test():
-    return 'hi'
+	form = FORM(_name='taxa',
+                requires=IS_NOT_EMPTY(),
+                INPUT(),
+                _action=URL('second'))
+    return dict(form=form)
+
