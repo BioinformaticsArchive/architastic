@@ -1,0 +1,7 @@
+{{extend 'layout.html'}}
+
+<h2>Taxa</h2>
+<table>
+	<tr><th>Submitted Name</th><th>TNRS blurb</th><th>taxon URI</th></tr>
+{{for name in name_row_list:}}<tr><td>{{=name.original_name}}</td><td>{{=name.tnrs_json}}</td><td>{{=name.taxon_uri}}</td></tr>{{pass}}
+</table>
