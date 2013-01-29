@@ -90,7 +90,16 @@ mail.settings.login = settings.email_login
 def define_tables(db, migrate=True):
     db.define_table(
         'tax_query',
-        Field('url', type='string')
+        Field('url', type='string'),
+        migrate=migrate
         )
-
+    db.define_table(
+        'name_from_user',
+        Field('tax_query', db.tax_query), # the id of the tax_query that deposited this name
+        Field('original_name', 'string'), # name in the query
+        Field('tnrs_json', 'text'), # hack blurb from TNRS
+        Field('taxon_uri', 'string'), # user's choice of the URI for this name
+        Field('match_method', 'string'), # hack a field for storing the mechanism used to choose between the tnrs choices 
+        migrate=migrate
+        )
 define_tables(db)
