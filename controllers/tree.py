@@ -117,6 +117,7 @@ def proxy_tnrs():
     
     response.headers['content-type'] = 'json'
     json2return = {}
+    populated = False
     name_row_list = db(db.name_from_user.tax_query == q).select()
     for row in name_row_list:
         if row.match_status == NameMatchingTypeFacets.UNCHECKED:
@@ -127,18 +128,29 @@ def proxy_tnrs():
                        match_status=match_status,
                        taxon_name='',
                        taxon_uri='')
-            row_key = str(q_id) + ' ' + str(row.id)
-            json2return[row_key] = {
-                'tnrs_query_id' : q_id,
-                'name_id_in_query' : str(row.id),
+            taxon_uri = ''
+            taxon_name = ''
+        else:
+            all_matches = json.parse(row.tnrs_json)
+            match_status = row.match_status
+            taxon_name = row.taxon_name
+            taxon_uri = row.taxon_uri
+            populated = True
+        row_key = str(q_id) + ' ' + str(row.id)
+        json2return[row_key] = {
+                'tnrsQueryId' : q_id,
+                'nameIdInQuery' : str(row.id),
                 'allMatches' : all_matches,
                 'matchStatus' : match_status,
-                'taxonName' : '',
-                'taxonUri' : '',
+                'taxonName' : taxon_name,
+                'taxonUri' : taxon_uri,
                 'submittedName' : str(row.original_name)
             }
-    if len(json2return) > 0:
-        json.dumps(json2return)
+
+    # no need to grab the JSON twice...
+    if populated:
+        db.commit()
+        json.dumps([v for v in json2return.itervalues()])
     resp = requests.get(q.url)
     data = resp.json()
     matchedList = data['names']
@@ -195,14 +207,13 @@ def proxy_tnrs():
                                   taxon_uri=taxon_uri)
             row_key = str(q_id) + ' ' + str(matched_db_row.id)
             json2return[row_key] = {
-                'tnrs_query_id' : q_id,
-                'name_id_in_query' : str(matched_db_row.id),
+                'tnrsQueryId' : q_id,
+                'nameIdInQuery' : str(matched_db_row.id),
                 'allMatches' : all_matches,
                 'matchStatus' : match_status,
                 'taxonName' : taxon_name,
                 'taxonUri' : taxon_uri,
                 'submittedName' : str(row.original_name)
             }
-    db.commit()
-            
-    return json.dumps(json2return)
+    db.commit()      
+    return json.dumps([v for v in json2return.itervalues()])
