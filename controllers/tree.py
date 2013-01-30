@@ -103,7 +103,7 @@ class NameMatchingTypeFacets:
 #@ TEMP need to get the names from the tree_store to answer this correctly...
 def _is_known_name(name_uri_tuple, source, tree_store_matching_context):
     name, uri = name_uri_tuple
-    ncbi_only = True
+    ncbi_only = False
     if ncbi_only:
         return source.upper() in ['NCBI']
     return True
