@@ -51,13 +51,10 @@ $(document).ready(function(){
 						var perfectMatches = [];
 						for (var m = 0; m < allMatches.length; m++){
 							var currMatch = allMatches[m];
-							if (currMatch.score == 1.0) {
-								var intSc = parseInt(currMatch.score, 10);
-								if (intSc == 1) {
-									perfectMatches[perfectMatches.length] = currMatch;
-								}
+							var intSc = parseInt(currMatch.score, 10);
+							if (intSc == 1) {
+								perfectMatches[perfectMatches.length] = currMatch;
 							}
-							
 						}
 						if (perfectMatches.length == 1) {
 							var onlyMatch = allMatches[0];
