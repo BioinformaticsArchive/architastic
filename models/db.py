@@ -110,7 +110,7 @@ def define_tables(db, migrate=True):
         Field('tnrs_json', 'text'), # hack blurb from TNRS
         Field('taxon_name', 'string'), # user's choice of the name for this taxon (from among the valid names)
         Field('taxon_uri', 'string'), # user's choice of the URI for this name
-        Field('match_method', 'string'), # hack a field for storing the mechanism used to choose between the tnrs choices 
+        Field('match_status', 'string'), # hack a field for storing the mechanism used to choose between the tnrs choices 
         migrate=migrate
         )
 define_tables(db)
