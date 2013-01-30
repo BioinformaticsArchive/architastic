@@ -12,13 +12,9 @@ import requests
 
 def _get_taxa_from_treestore(url):
     # get JSON from treestore
-    response = requests.get(url)
-
-    if response.status_code==200:
-        return response
-        json_results = response.json()
-        d_results = json.loads(json_results)
-        return d_results
+    r = requests.get(url)
+    if r.status_code==200:
+        return r.json()
     else:
         raise HTTP(503)
 

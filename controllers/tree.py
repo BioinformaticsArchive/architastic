@@ -100,10 +100,12 @@ class NameMatchingTypeFacets:
     ONLY_MATCH_IN_STORE = 'imperfect but only match in tree store'
     UNCHECKED = ''
 
+force_repopulate_from_json = True # debugging
+ncbi_only = False
+      
 #@ TEMP need to get the names from the tree_store to answer this correctly...
 def _is_known_name(name_uri_tuple, source, tree_store_matching_context):
     name, uri = name_uri_tuple
-    ncbi_only = False
     if ncbi_only:
         return source.upper() in ['NCBI']
     return True
@@ -167,7 +169,6 @@ def proxy_tnrs():
             }
 
     # no need to grab the JSON twice...
-    force_repopulate_from_json = True # debugging
     if populated and not force_repopulate_from_json:
         db.commit()
         json.dumps([v for v in json2return.itervalues()])

@@ -64,6 +64,8 @@ $(document).ready(function(){
 						var jsonCell = $(this).find('.tnrsJsonBlurb');
 						jsonCell.text(matchInfoAsJson);
 						var dropDownMenu = $(this).find('.tnrsNameChooser');
+						var knownNames = new Array();
+						var defVal = null;
 						for (var mci=0; mci < matches.length; mci++) {
 							var mo = matches[mci];
 							var nameFromTNRS = mo.acceptedName;
@@ -71,7 +73,24 @@ $(document).ready(function(){
 								nameFromTNRS = mo.matchedName;
 							}
 							nameFromTNRS = nameFromTNRS + ' (from ' + mo.sourceId + ')'
-							$('<option />', {value : [nameFromTNRS, mo.uri], text: nameFromTNRS}).appendTo(dropDownMenu);
+							if (mo.is_in_tree_store) {
+								var valPair = [nameFromTNRS, mo.uri]
+								knownNames[knownNames.length] =  {value : valPair, text: nameFromTNRS};
+								if (mo.uri == matchBlob.taxonUri) {
+									defVal = valPair;
+								}
+							}
+						}
+						if (knownNames.length != 1) {
+							$('<option />', {val : ['',''], text : 'UNMATCHED!'}).appendTo(dropDownMenu);
+						
+						}
+						for (var mci=0; mci < knownNames.length; mci++) {
+							var mo = knownNames[mci];
+							$('<option />', mo).appendTo(dropDownMenu);
+						}
+						if (defVal) {
+							dropDownMenu.val(defVal);
 						}
 						jsonCell.hide();
 						nameCell.hide();
