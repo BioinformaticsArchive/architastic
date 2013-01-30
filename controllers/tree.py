@@ -36,12 +36,14 @@ b='''        sys.exit('Did not get a URI or redirect from the submit GET operati
 '''
 
 # form for entering taxa list
+# SQLFORM.factory allows you to create nice forms without pointing 
+# to a data model
 def enter():
     form = SQLFORM.factory(
         Field('taxalist',requires=IS_NOT_EMPTY()),
         Field('treestore',requires=IS_IN_SET(['opentree','rdf'])))
     if form.process().accepted:
-        response.flash='form accepted'
+        response.flash='input accepted'
         session.taxalist=form.vars.taxalist
         session.treestore=form.vars.treestore
         redirect(URL('find'))
@@ -49,11 +51,12 @@ def enter():
         response.flash='form has errors'
     return dict(form=form)
 
-
 # creates the URL for the TNRS and calls the TNRS
 def find():
+    # session vars come from form in enter()
     raw_taxa_str=session.taxalist
-    #raw_taxa_str = request.vars.taxa
+
+    # and then split on commas
     taxa_list = [i.strip() for i in raw_taxa_str.split(',')]
     
     #@TEMP should be based on the user's TNRS choice...
@@ -83,3 +86,5 @@ def show():
     name_row_list = db(db.name_from_user.tax_query == q).select()
     return {'tnrs_url' : q.url,
             'name_row_list' : name_row_list}
+
+
