@@ -85,6 +85,14 @@ def show():
         raise HTTP(404)
     name_row_list = db(db.name_from_user.tax_query == q).select()
     return {'tnrs_url' : q.url,
-            'name_row_list' : name_row_list}
+            'name_row_list' : name_row_list, 
+            'tax_query_id': q_id }
 
-
+def proxy_tnrs():
+    try:
+        q_id = request.args[-1]
+        q = db.tax_query[q_id]
+    except:
+        raise HTTP(404)
+    response.headers['content-type'] = 'json'
+    return requests.get(q.url).text

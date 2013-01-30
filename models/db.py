@@ -98,6 +98,7 @@ def define_tables(db, migrate=True):
         Field('tax_query', db.tax_query), # the id of the tax_query that deposited this name
         Field('original_name', 'string'), # name in the query
         Field('tnrs_json', 'text'), # hack blurb from TNRS
+        Field('taxon_name', 'string'), # user's choice of the name for this taxon (from among the valid names)
         Field('taxon_uri', 'string'), # user's choice of the URI for this name
         Field('match_method', 'string'), # hack a field for storing the mechanism used to choose between the tnrs choices 
         migrate=migrate
