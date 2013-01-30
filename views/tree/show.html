@@ -3,8 +3,15 @@
 <h2>Taxa</h2>
 {{=DIV(tnrs_url, _class='tnrsURL', _id="tnrsURL")}}
 <table>
-	<tr><th>Submitted Name</th><th>TNRS blurb</th><th>taxon URI</th></tr>
-{{for name in name_row_list:}}<tr><td>{{=name.original_name}}</td><td>{{=DIV(name.tnrs_json, _class='tnrsJsonBlurb', _id=str(name.id))}}</td><td>{{=name.taxon_uri}}</td></tr>{{pass}}
+	<tr><th>Submitted Name</th><th class="tnrsJsonBlurbHeader">TNRS blurb</th><th>taxon URI</th></tr>
+{{for name in name_row_list:}}
+	{{=TR(TD(name.original_name), 
+	      TD(DIV(name.tnrs_json, _class='tnrsJsonBlurb', _id=str(name.id))),
+	      TD(name.taxon_uri),
+	      _origname=name.original_name,
+	      _class='tnrsNameRow'
+	      )}}
+	{{pass}}
 </table>
 
 <p>TNRS results are/will be from {{=A(tnrs_url, _href=tnrs_url, _class='tnrsURL', _id="tnrsURL")}}</p>
