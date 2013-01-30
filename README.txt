@@ -1,4 +1,10 @@
-Installation:
+Prerequisites
+=============
+
+  $ pip install requests
+
+Installation
+============
 
   1. Download the recent stable source version of web2py from http://www.web2py.com/examples/default/download
 

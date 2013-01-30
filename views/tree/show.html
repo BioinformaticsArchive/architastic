@@ -3,10 +3,11 @@
 <h2>Taxa</h2>
 {{=DIV(tnrs_url, _class='tnrsURL', _id="tnrsURL")}}
 <table>
-	<tr><th>Submitted Name</th><th class="tnrsJsonBlurbHeader">TNRS blurb</th><th>taxon URI</th></tr>
+	<tr><th>Submitted Name</th><th class="tnrsJsonBlurbHeader">TNRS blurb</th><th>Taxon Name</th><th>Taxon URI</th></tr>
 {{for name in name_row_list:}}
 	{{=TR(TD(name.original_name, _class='tnrsOrigName'), 
 	      TD(name.tnrs_json, _class='tnrsJsonBlurb'),
+	      TD(name.taxon_name, _class='tnrsTaxonName'),
 	      TD(name.taxon_uri, _class='tnrsTaxonUri'),
 	      _origname=name.original_name,
 	      _class='tnrsNameRow',
@@ -44,7 +45,25 @@ $(document).ready(function(){
 					var selector = 'tr[origname="' + matchBlob.submittedName + '"]';
 					$(selector).each(function () {
 						var blurbsInRow = $(this).children('.tnrsJsonBlurb');
-						blurbsInRow.text('matched');
+						var allMatches = matchBlob.matches;
+						var matchInfoAsJson = JSON.stringify(allMatches);
+						blurbsInRow.text(matchInfoAsJson);
+						var perfectMatches = [];
+						for (var m = 0; m < allMatches.length; m++){
+							var currMatch = allMatches[m];
+							if (currMatch.score == 1.0) {
+								var intSc = parseInt(currMatch.score, 10);
+								if (intSc == 1) {
+									perfectMatches[perfectMatches.length] = currMatch;
+								}
+							}
+							
+						}
+						if (perfectMatches.length == 1) {
+							var onlyMatch = allMatches[0];
+							$(this).children('.tnrsTaxonName').text(onlyMatch.acceptedName);
+							$(this).children('.tnrsTaxonUri').text(onlyMatch.uri);
+						}i
 					});
 				}
 			},
