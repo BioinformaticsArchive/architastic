@@ -16,6 +16,7 @@
 	      )}}
 	{{pass}}
 </table>
+<div class="statusDiv"></div>
 
 <p>TNRS results are/will be from {{=A(tnrs_url, _href=tnrs_url, _class='tnrsURL', _id="tnrsURL")}}</p>
 {{proxy_url=URL('proxy_tnrs', args=(tax_query_id,))}}
@@ -31,7 +32,7 @@ $(document).ready(function(){
 	});
 	
 	/*$("span").text(blurbArray.length);*/
-	var f = $(".tnrsJsonBlurb").first();
+	var f = $(".statusDiv").first();
 	if (hasEmptyJSON) {
 		f.text("processing...");
 		$.ajax({
@@ -45,10 +46,7 @@ $(document).ready(function(){
 					var matchBlob = matchedList[i];
 					var selector = 'tr[tnrsQueryId="' + matchBlob.tnrsQueryId + '"][nameIdInQuery="' + matchBlob.nameIdInQuery + '"]' ;
 					$(selector).each(function () {
-						var allMatches = matchBlob.allMatches;
-						var matchInfoAsJson = JSON.stringify(allMatches);
-						var jsonCell = $(this).children('.tnrsJsonBlurb');
-						jsonCell.text(matchInfoAsJson);
+						f.text(matchBlob.submittedName + ' + ' + f.text());
 						var nameCell = $(this).children('.tnrsTaxonName');
 						if (nameCell.text() == "") {
 							nameCell.text(matchBlob.taxonName)
@@ -57,6 +55,10 @@ $(document).ready(function(){
 						if (uriCell.text() == "") {
 							uriCell.text(matchBlob.taxonUri)
 						}
+						var matches = matchBlob.matches;
+						var matchInfoAsJson = JSON.stringify(matches);
+						var jsonCell = $(this).children('.tnrsJsonBlurb');
+						jsonCell.text(matchInfoAsJson);
 					});
 				}
 				/*

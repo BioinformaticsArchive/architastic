@@ -103,11 +103,27 @@ class NameMatchingTypeFacets:
 #@ TEMP need to get the names from the tree_store to answer this correctly...
 def _is_known_name(name_uri_tuple, source, tree_store_matching_context):
     name, uri = name_uri_tuple
+    ncbi_only = True
+    if ncbi_only:
+        return source.upper() in ['NCBI']
     return True
 
 # grab JSON from the TNRS and return it. This avoids problems with cross-domain scripting
 #   restriction
 def proxy_tnrs():
+    '''
+    When called with an ID of a taxa query, this will return a transformation of the 
+    JSON returned from the TNRS
+    
+    list of dicts with the following keys for each name submitted in the query:
+    tnrsQueryId   = id in the tax_query table
+    nameIdInQuery = id in name_from_user table
+    matches : matches from tnrs JSON
+    matchStatus' : status of the name in name_from_user table (see NameMatchingTypeFacets)
+    taxonName ' : name to send to tree store,
+    taxonUri' : uri to send to tree store,
+    submittedName' : raw name 
+    '''
     try:
         q_id = request.args[-1]
         q = db.tax_query[q_id]
@@ -140,7 +156,7 @@ def proxy_tnrs():
         json2return[row_key] = {
                 'tnrsQueryId' : q_id,
                 'nameIdInQuery' : str(row.id),
-                'allMatches' : all_matches,
+                'matches' : all_matches,
                 'matchStatus' : match_status,
                 'taxonName' : taxon_name,
                 'taxonUri' : taxon_uri,
@@ -148,7 +164,8 @@ def proxy_tnrs():
             }
 
     # no need to grab the JSON twice...
-    if populated:
+    force_repopulate_from_json = True # debugging
+    if populated and not force_repopulate_from_json:
         db.commit()
         json.dumps([v for v in json2return.itervalues()])
     resp = requests.get(q.url)
@@ -209,11 +226,11 @@ def proxy_tnrs():
             json2return[row_key] = {
                 'tnrsQueryId' : q_id,
                 'nameIdInQuery' : str(matched_db_row.id),
-                'allMatches' : all_matches,
+                'matches' : all_matches,
                 'matchStatus' : match_status,
                 'taxonName' : taxon_name,
                 'taxonUri' : taxon_uri,
-                'submittedName' : str(row.original_name)
+                'submittedName' : str(matched_db_row.original_name)
             }
     db.commit()      
     return json.dumps([v for v in json2return.itervalues()])
