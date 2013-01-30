@@ -8,7 +8,8 @@
 	{{=TR(TD(name.original_name, _class='tnrsOrigName'), 
 	      TD(DIV(name.tnrs_json, _class='tnrsJsonBlurb'),
 	         DIV(name.taxon_name, _class='tnrsTaxonName'),
-	         DIV(name.taxon_uri, _class='tnrsTaxonUri')),
+	         DIV(name.taxon_uri, _class='tnrsTaxonUri'),
+	         SELECT(_class='tnrsNameChooser')),
 	      _origname=name.original_name,
 	      _class='tnrsNameRow',
 	      _nameIdInQuery=str(name.id),
@@ -29,6 +30,8 @@ $(document).ready(function(){
 		if ($(this).text() == "") {
 			hasEmptyJSON = true;
 		}
+	});
+	$(".tnrsNameChooser").each(function() {
 		$(this).hide();
 	});
 	$('.tnrsJsonBlurbHeader').hide();
@@ -60,6 +63,20 @@ $(document).ready(function(){
 						var matchInfoAsJson = JSON.stringify(matches);
 						var jsonCell = $(this).find('.tnrsJsonBlurb');
 						jsonCell.text(matchInfoAsJson);
+						var dropDownMenu = $(this).find('.tnrsNameChooser');
+						for (var mci=0; mci < matches.length; mci++) {
+							var mo = matches[mci];
+							var nameFromTNRS = mo.acceptedName;
+							if(! nameFromTNRS) {
+								nameFromTNRS = mo.matchedName;
+							}
+							nameFromTNRS = nameFromTNRS + ' (from ' + mo.sourceId + ')'
+							$('<option />', {value : [nameFromTNRS, mo.uri], text: nameFromTNRS}).appendTo(dropDownMenu);
+						}
+						jsonCell.hide();
+						nameCell.hide();
+						uriCell.hide();
+						dropDownMenu.show();
 					});
 				}
 				/*
