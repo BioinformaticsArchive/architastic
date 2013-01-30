@@ -1,0 +1,40 @@
+{
+   "metadata":{
+      "version":"",
+      "treestoreMetadata":{
+         "treestoreShortName":"ottol",
+         "treestoreLongName":"Open Tree of Life",
+         "domain":"",
+         "urlPrefix":""
+      }
+   },
+   "externalSources":{
+      "ncbi":{
+         "domain":"http://www.ncbi.nlm.nih.gov/",
+         "urlPrefix":"http://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=",
+         "uri":""
+      },
+      "gbif":{
+         "domain":"",
+         "urlPrefix":"",
+         "uri":""
+      }
+   },
+   "names":[
+      {
+         "name":"example name 0",
+         "treestoreId":"ncbi:uid0",
+         "sourceIds":{
+            "ncbi":"uid0",
+            "gbif":"uid1"
+         }
+      },
+      {
+         "name":"example name 0",
+         "treestoreId":"gbif:uid2",
+         "sourceIds":{
+            "gbif":"uid2"
+         }
+      }
+   ]
+}
