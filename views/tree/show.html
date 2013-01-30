@@ -2,13 +2,13 @@
 
 <h2>Taxa</h2>
 {{=DIV(tnrs_url, _class='tnrsURL', _id="tnrsURL")}}
-<table>
-	<tr><th>Submitted Name</th><th class="tnrsJsonBlurbHeader">TNRS blurb</th><th>Taxon Name</th><th>Taxon URI</th></tr>
+<table border="1">
+	<tr><th>Submitted Name</th><th>Taxon Name</th></tr>
 {{for name in name_row_list:}}
 	{{=TR(TD(name.original_name, _class='tnrsOrigName'), 
-	      TD(name.tnrs_json, _class='tnrsJsonBlurb'),
-	      TD(name.taxon_name, _class='tnrsTaxonName'),
-	      TD(name.taxon_uri, _class='tnrsTaxonUri'),
+	      TD(DIV(name.tnrs_json, _class='tnrsJsonBlurb'),
+	         DIV(name.taxon_name, _class='tnrsTaxonName'),
+	         DIV(name.taxon_uri, _class='tnrsTaxonUri')),
 	      _origname=name.original_name,
 	      _class='tnrsNameRow',
 	      _nameIdInQuery=str(name.id),
@@ -29,8 +29,9 @@ $(document).ready(function(){
 		if ($(this).text() == "") {
 			hasEmptyJSON = true;
 		}
+		$(this).hide();
 	});
-	
+	$('.tnrsJsonBlurbHeader').hide();
 	/*$("span").text(blurbArray.length);*/
 	var f = $(".statusDiv").first();
 	if (hasEmptyJSON) {
@@ -47,17 +48,17 @@ $(document).ready(function(){
 					var selector = 'tr[tnrsQueryId="' + matchBlob.tnrsQueryId + '"][nameIdInQuery="' + matchBlob.nameIdInQuery + '"]' ;
 					$(selector).each(function () {
 						f.text(matchBlob.submittedName + ' + ' + f.text());
-						var nameCell = $(this).children('.tnrsTaxonName');
+						var nameCell = $(this).find('.tnrsTaxonName');
 						if (nameCell.text() == "") {
 							nameCell.text(matchBlob.taxonName)
 						}
-						var uriCell = $(this).children('.tnrsTaxonUri');
+						var uriCell = $(this).find('.tnrsTaxonUri');
 						if (uriCell.text() == "") {
 							uriCell.text(matchBlob.taxonUri)
 						}
 						var matches = matchBlob.matches;
 						var matchInfoAsJson = JSON.stringify(matches);
-						var jsonCell = $(this).children('.tnrsJsonBlurb');
+						var jsonCell = $(this).find('.tnrsJsonBlurb');
 						jsonCell.text(matchInfoAsJson);
 					});
 				}

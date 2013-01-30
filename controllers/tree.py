@@ -147,7 +147,10 @@ def proxy_tnrs():
             taxon_uri = ''
             taxon_name = ''
         else:
-            all_matches = json.parse(row.tnrs_json)
+            if row.tnrs_json:
+                all_matches = json.loads(row.tnrs_json)
+            else:
+                all_matches = []
             match_status = row.match_status
             taxon_name = row.taxon_name
             taxon_uri = row.taxon_uri
