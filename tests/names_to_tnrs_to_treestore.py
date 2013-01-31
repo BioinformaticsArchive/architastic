@@ -152,6 +152,8 @@ def query_treestore(taxon_uid_tuples, treestore_name='http://opentree-dev.bio.ku
         #cql post
         data = '{"query":"pt.taxaForSubtree=\\"%s\\""}' % name_string
         
+        if options.verbose:
+            sys.stderr.write('querying opentree treestore with %d names ...\n' % len(name_list))
         try:
             resp = requests.post(SUBMIT_URI, headers=headers, data=data)
         except requests.exceptions.ConnectionError as err:
@@ -171,16 +173,20 @@ def query_treestore(taxon_uid_tuples, treestore_name='http://opentree-dev.bio.ku
         #taxon names aren't necessarily standardized in trees, can could have underscores, but won't
         #come back from the TRNS that way.  So, if it finds nothing try again. Currently finding nothing
         #is indicated by the throwing of a base Exception in the treestore module
+        if options.verbose:
+            sys.stderr.write('querying RDF treestore with %d names ...\n' % len(name_list))
         try:
-            ret_tree = rdf_treestore.get_subtree(contains=name_list, match_all=False, format='newick')
+            underscored_list = [ re.sub(' ', '_', name) for name in name_list ]
+            ret_tree = rdf_treestore.get_subtree(contains=underscored_list, match_all=False, format='newick')
         except:
-            name_list = [ re.sub(' ', '_', name) for name in name_list ]
+            if options.verbose:
+                sys.stderr.write('querying RDF treestore with %d names ...\n' % len(name_list))
             ret_tree = rdf_treestore.get_subtree(contains=name_list, match_all=False, format='newick')
         
         return ret_tree
     
     else:
-        exit('I don\'t know how to contact treestore %s yet' % treestore_name)
+        sys.exit('I don\'t know how to contact treestore %s yet' % treestore_name)
 
 
 def write_resolved_names(submitted_name_list, names_response, outp):
@@ -208,21 +214,14 @@ def write_resolved_names(submitted_name_list, names_response, outp):
             sorted_list = [(float(i[u'score']), i) for i in m]
             sorted_list.sort(reverse=True)
             for score_float, a_match in sorted_list:
-                outp.write('%30s' % sn) 
-                outp.write('%s\n' % '\t'.join(['%30s' % a_match[f] for f in col_fields[1:]]))
+                outp.write('%25s' % sn) 
+                outp.write('%s\n' % '\t'.join(['%25s' % a_match[f] for f in col_fields[1:]]))
         else:
             outp.write('%s\t\t\t\t\t\n' % sn)
     return matches    
 
 #MTH & DJZ
 all_results = []
-write_tnrs_summary = True
-
-#this defines whether a match score is "good enough" to be passed on to the treestore
-accepted_match_threshold = 0.5
-
-#if this is True, only pass on the best scoring match, even if there are multiple > accepted_match_threshold
-only_accept_best = True
 
 for inp_stream in inp_stream_list:
     #first split on newlines
@@ -244,12 +243,14 @@ for inp_stream in inp_stream_list:
         resp = requests.get(SUBMIT_URI,
                             params={'query':names_newline_sep},
                             allow_redirects=True)
-        sys.stderr.write('Sent GET to %s\n' %(resp.url))
+        if options.verbose:
+            sys.stderr.write('Sent GET to %s\n' %(resp.url))
         resp.raise_for_status()
         results = resp.json()
         retrieve_uri = results.get(u'uri')
         if retrieve_uri:
-            sys.stderr.write('Retrieving names from %s\n' % (retrieve_uri))
+            if options.verbose:
+                sys.stderr.write('Retrieving names from %s\n' % (retrieve_uri))
         elif len(resp.history) > 0:
             retrieve_uri = resp.url
         else:
@@ -263,7 +264,8 @@ for inp_stream in inp_stream_list:
             if NAMES_KEY in retrieve_results:
                 break
             min_time = time.time()
-            sys.stderr.write('Waiting (%f sec) for processing by tnrs.\n' % sleep_interval)
+            if options.verbose:
+                sys.stderr.write('Waiting (%f sec) for processing by tnrs.\n' % sleep_interval)
             time.sleep(sleep_interval)
             sleep_interval *= sleep_interval_increase_factor
         
@@ -280,7 +282,7 @@ treestore_start_time = time.time()
 
 taxon_tuples = []
 for sub_tax_dict in all_results:
-    for single_match_dict in sorted(sub_tax_dict[u'matches'], key=lambda m: m['score']):
+    for single_match_dict in sorted(sub_tax_dict[u'matches'], reverse=True, key=lambda m: m['score']):
         if float(single_match_dict['score']) >= options.min_match_score:
             taxon_tuples.append((single_match_dict[u'matchedName'], single_match_dict[u'uri']))
             if not options.pass_all_name_matches:
@@ -292,7 +294,7 @@ else:
     tree_string = query_treestore(taxon_tuples)
 
 out_stream = open(options.output, 'w') if options.output else sys.stdout
-out_stream.write('%s\n' % tree_string)
+out_stream.write('%s\n' % tree_string.strip())
 
 treestore_end_time = time.time()
 tnrs_time = datetime.timedelta(seconds=(tnrs_end_time - tnrs_start_time))
