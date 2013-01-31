@@ -86,7 +86,6 @@ mail.settings.server = settings.email_server
 mail.settings.sender = settings.email_sender
 mail.settings.login = settings.email_login
 
-
 def define_tables(db, migrate=True):
     # treestore_names defines the entities that the treestore 'knows' about
     # taxon name, source id (NCBI, etc) and the identifier that the treestore

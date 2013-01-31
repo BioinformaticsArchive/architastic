@@ -80,12 +80,116 @@ def find_tree():
         s = str(row.taxon_name)
         if s:
             matched_names.append(s)
-    return requests.post(URL(a=request.application,
-                             c='auto', 
-                             f='tree.json',
-                             scheme='http'),
-                         data={'taxa' : '\n'.join(matched_names)}
-                        ).text
+    
+    # call script to get tree, would be good to encapsulate this logic here 
+#    tree_result = requests.post(URL(a=request.application,
+#                             c='auto', 
+#                             f='tree.json',
+#                             scheme='http'),
+#                         data={'taxa' : '\n'.join(matched_names)}
+#                        ).text
+
+# ---------------------------------------------------------------
+#  query_treestore function from derrick's script
+
+    '''DJZ
+    Query a treestore, making some strict assumptions about what formats they accept
+    requests in.  Currently only works with treestores that return pruned trees based
+    on a comma delimited list of taxon names.  The opentree treestore accepts this
+    stuck in a raw POST.  An RDF treestore is accessed by passing a list of names to
+    functions from the treestore python package.
+    
+    taxon_uid_tuples - list of doubles with (taxon name, uid), only taxon_names
+        currently used
+    treestore_name - EITHER a url string for an opentree treestore, or a string containing
+        'rdf', for an RDF treestore
+
+    returns tree in newick string currently
+    '''
+
+#    use_uids = False
+#    if not use_uids:
+        #remove dupe names
+    name_list = set([str(tup[0]) for tup in matched_names])
+    name_string = ','.join(name_list)
+#    else:
+#        sys.stderr.write('sorry, can\'t request by uids yet\n')
+#        name_string = ','.join(str(tup[1]) for tup in taxon_uid_tuples)
+
+    # defaulting to opentree for now
+    treestore_name = "opentree"
+
+    if 'opentree' in treestore_name.lower():
+
+        # port is defined by neo4j
+        port = 7474
+
+        # path to service for getting a taxonomy subtree
+        submit_path = '/db/data/ext/GetJsons/graphdb/subtree'
+
+        # build full url for service
+        submit_uri = treestore_name + ':' + str(port) + submit_path
+
+        # build headers as dict for requests module
+        headers = {'Content-Type':'Application/json'}
+
+        # cql post
+        data = '{"query":"pt.taxaForSubtree=\\"%s\\""}' % name_string
+        
+#        if options.verbose:
+        sys.stderr.write('querying opentree treestore with %d names ...\n' % len(name_list))
+        
+        t_result = ""
+        try:
+            t_result = requests.post(submit_uri, headers=headers, data=data)
+        except requests.exceptions.ConnectionError as err:
+            sys.exit('\nError connecting to treestore %s!\n%s' % (treestore_name, err)) 
+ 
+#        return resp.text
+
+    elif 'rdf' in treestore_name.lower():
+
+        #### NONE OF THIS HAS BEEN MODIFIED FROM THE ORIGINAL!
+        #### IT WILL PROBABLY BREAK.
+
+        try:
+            import treestore
+        except ImportError:
+            sys.exit('You must install the "treestore" package to interface with an RDF treestore.\n Get it from https://github.com/phylotastic/rdf-treestore.')
+
+        #instantiate a treestore object, which will look for an attached 
+        rdf_treestore = treestore.Treestore()
+        
+        #taxon names aren't necessarily standardized in trees, can could have underscores, but won't
+        #come back from the TRNS that way.  So, if it finds nothing try again. Currently finding nothing
+        #is indicated by the throwing of a base Exception in the treestore module
+        if options.verbose:
+            sys.stderr.write('querying RDF treestore with %d names ...\n' % len(name_list))
+        try:
+            underscored_list = [ re.sub(' ', '_', name) for name in name_list ]
+            ret_tree = rdf_treestore.get_subtree(contains=underscored_list, match_all=False, format='newick')
+        except:
+            if options.verbose:
+                sys.stderr.write('querying RDF treestore with %d names ...\n' % len(name_list))
+            ret_tree = rdf_treestore.get_subtree(contains=name_list, match_all=False, format='newick')
+        
+        return ret_tree
+    
+    else:
+        sys.exit('I don\'t know how to contact treestore %s yet' % treestore_name)
+
+# ------------------------------------------------------------------
+
+    # populate database fields for this treestore call
+    treestore_query_id = db.treestore_query.insert(service_url=submit_uri,
+                                 headers=headers,
+                                 query_data=data,
+                                 treestore_name=treestore_name)
+
+    treestore_result_id = db.treestore_result.insert(treestore_query_id=treestore_query_id,
+                            tree_result=t_result)
+
+    return redirect(URL('show_tree', args=(treestore_result_id,)))
 
 # Shows results from TNRS call
 def show():
@@ -103,6 +207,16 @@ def show():
                                        #       to be distinct from the query id (if a session calls the TNRS
                                        #       multiple times...)
             }
+
+def show_tree():
+    try:
+        q_id = request.args[-1]
+        q = db.treestore_result[q_id]
+    except:
+        raise HTTP(404)
+
+    return {'treestore_result' : q.treestore_result,
+            'treestore_query_id' : q.treestore_query_id}
 
 class NameMatchingTypeFacets:
     PERFECT_AMBIGUOUS = 'multiple perfect matches'
