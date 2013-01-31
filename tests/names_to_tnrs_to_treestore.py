@@ -52,18 +52,19 @@ def proportion_type(string):
         raise ArgumentTypeError(mess)
     return value
 
-'''
 #use argparse module to parse commandline input
-parser = ArgumentParser(description='attempt to run a full (but basic ')
+parser = ArgumentParser(description='attempt to run a full (but basic phylotastic workflow, i.e.\n input names->TNRS->Treestore')
 
-#use mutExclGroup.add_argument instead of parser.add_argument for mutually exclusive options
-#mutExclGroup = parser.add_mutually_exclusive_group()
+parser.add_argument('-m', '--min-match-score', type=proportion_type, default=0.5,
+                    help='minimum score of TNRS match to pass name onto treestore (default 0.5)')
 
-#add possible arguments
-#flag
-parser.add_argument('-v', '--invert-match', dest='invertMatch', action='store_true', default=False,
-                    help='invert the sense of the match (default false)')
+parser.add_argument('-a', '--pass-all-name-matches', action='store_true', default=False,
+        help='for a given query name, pass all TNRS matches of >= than min-match-score\n\tdefault: only pass best')
 
+parser.add_argument('-v', '--verbose', action='store_true', default=False,
+        help='print a bunch of crap to stderr about tnrs query, etc')
+
+'''
 #string
 parser.add_argument('-f', '--patternfile', dest='patternFile', type=str, default=None, 
                     help='file from which to read patterns (you must still pass a pattern on the command line, which is ignored)')
@@ -77,18 +78,16 @@ parser.add_argument('-mp', '--min-match-prop', dest='minMatchProportion', type=p
                     help='proportion of hit that must overlap query (default 0.0)')
 
 #variable number of arguments
-parser.add_argument('--taxa', default=None, 
-                    help='a list of comma delimited taxon names to query')
 
-parser.add_argument('--taxon-uids', default=None, 
-                    help='a list of comma delimited taxon names to query')
+'''
+parser.add_argument('filenames', nargs="*", default=None, 
+                    help='a list of filenames to read for comma or newline delimited taxon names\n\tnone for stdin')
 
-parser.add_argument('-o', '--output', dest='outFile', type=str, default=None, 
+parser.add_argument('-o', '--output', type=str, default=None, 
                     help='file to write output to (default stdout)')
 
 #now process the command line
 options = parser.parse_args()
-'''
 
 sleep_interval = 1.0
 sleep_interval_increase_factor = 1.5
@@ -106,7 +105,8 @@ tnrs_start_time = time.time()
 if len(sys.argv) == 1:
     inp_stream_list = [sys.stdin]
 else:
-    inp_stream_list = [open(fn, 'rU') for fn in sys.argv[1:]]
+    #inp_stream_list = [open(fn, 'rU') for fn in sys.argv[1:]]
+    inp_stream_list = [open(fn, 'rU') for fn in options.filenames]
 if len(inp_stream_list) == 0:
     inp_stream_list = [sys.stdin]
 
@@ -267,8 +267,8 @@ for inp_stream in inp_stream_list:
             time.sleep(sleep_interval)
             sleep_interval *= sleep_interval_increase_factor
         
-        if write_tnrs_summary:
-            write_resolved_names(this_batch, retrieve_results[NAMES_KEY], sys.stdout)
+        if options.verbose:
+            write_resolved_names(this_batch, retrieve_results[NAMES_KEY], sys.stderr)
         curr_ind += batch_size
     
         all_results.extend(retrieve_results[NAMES_KEY])
@@ -277,36 +277,26 @@ for inp_stream in inp_stream_list:
 
 #DJZ
 treestore_start_time = time.time()
+
 taxon_tuples = []
-
-min_score_threshold = 0.5
-pass_multiple_matches = False
-
-for subTaxDict in all_results:
-    for singleMatchDict in sorted(subTaxDict[u'matches']):
-        if float(singleMatchDict['score']) >= min_score_threshold:
-            taxon_tuples.append((singleMatchDict[u'matchedName'], singleMatchDict[u'uri']))
-            if not pass_multiple_matches:
+for sub_tax_dict in all_results:
+    for single_match_dict in sorted(sub_tax_dict[u'matches'], key=lambda m: m['score']):
+        if float(single_match_dict['score']) >= options.min_match_score:
+            taxon_tuples.append((single_match_dict[u'matchedName'], single_match_dict[u'uri']))
+            if not options.pass_all_name_matches:
                 break
 
 if USE_RDF:
     tree_string = query_treestore(taxon_tuples, treestore_name='rdftreestore')
 else:
     tree_string = query_treestore(taxon_tuples)
-#tree_string = query_treestore(taxon_tuples, treestore_name='rdftreestore')
-#tree_string = query_treestore(taxon_tuples)
-sys.stdout.write('%s\n' % tree_string)
-treestore_end_time = time.time()
 
-#end_time = time.time()
-#diff_time = end_time - start_time
+out_stream = open(options.output, 'w') if options.output else sys.stdout
+out_stream.write('%s\n' % tree_string)
+
+treestore_end_time = time.time()
 tnrs_time = datetime.timedelta(seconds=(tnrs_end_time - tnrs_start_time))
 treestore_time = datetime.timedelta(seconds=(treestore_end_time - treestore_start_time))
 sys.stderr.write('%s %s\n' % (string.rjust('tnrs time', 15), string.rjust(str(tnrs_time), 15)))
 sys.stderr.write('%s %s\n' % (string.rjust('treestore time', 15), string.rjust(str(treestore_time), 15)))
-#td = datetime.timedelta(seconds=diff_time)
-#min_diff_time = min_time - start_time
-#min_td = datetime.timedelta(seconds=min_diff_time)
-#sys.stderr.write('total time = %s\n' % str(td))
-#sys.stderr.write('min tnrs time = %s\n' % str(min_td))
 
