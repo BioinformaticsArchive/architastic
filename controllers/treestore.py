@@ -33,7 +33,9 @@ def getnames():
         response.flash='form has errors'
     return dict(form=form)
 
-# at this point, does no checking for duplicates
+# inserts names into database
+# checks that identifier does not already exist
+# TODO: possible that name might change when identifer doesn't?
 def _insert_into_database(phylodump):
     inserted_names={};
     if phylodump['names']:
@@ -44,7 +46,7 @@ def _insert_into_database(phylodump):
             rows = db(db.treestore_names.treestore_id==identifier).select()
             if not rows:
                 inserted_names[identifier]=name
-                #db.treestore_names.insert(taxon_name=name,treestore_id=identifer)
+                db.treestore_names.insert(taxon_name=name,treestore_id=identifier)
     else:
        response.flash='no names block'
     return dict(inserted_names)
