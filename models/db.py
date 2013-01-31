@@ -92,14 +92,22 @@ def define_tables(db, migrate=True):
     # taxon name, source id (NCBI, etc) and the identifier that the treestore
     # wants to use when referring to that name
     db.define_table(
+        'treestores',
+        Field('name_of_treestore','string'), #name
+        Field('url','string'),
+        migrate=migrate
+        )
+    db.define_table(
         'treestore_names',
-        Field('taxon_name','string'), # name, might not be unique
-        Field('treestore_id','string',unique=True), # ids for a particular treestore
+        Field('treestore_name','string'), # name used by the treestore, might not be unique
+        Field('taxon_id','string',unique=True), # ids for taxon_name from the treestore
+        Field('name_of_treestore',db.treestores), # name for the treestore itself
         migrate=migrate
         )
     db.define_table(
         'tax_query',
         Field('url', type='string'),
+        Field('treestore',type='string'),
         migrate=migrate
         )
     db.define_table(
@@ -118,7 +126,7 @@ def define_tables(db, migrate=True):
         Field('service_url', 'string'), # the full url for the treestore service, including domain, ports, etc
         Field('headers', 'string'), # headers stored as JSON to be parsed into a dict for the requests module
         Field('query_data', 'string'), # the cql query, wrapped in whatever formatting is required by the treestore
-        Field('treestore_name', 'string') # just the name of the treestore for labeling purposes
+        Field('treestore_name', 'string'), # just the name of the treestore for labeling purposes
         migrate=migrate,
         )
     db.define_table(
