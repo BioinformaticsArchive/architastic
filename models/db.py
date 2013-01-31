@@ -118,13 +118,13 @@ def define_tables(db, migrate=True):
         Field('service_url', 'string'), # the full url for the treestore service, including domain, ports, etc
         Field('headers', 'string'), # headers stored as JSON to be parsed into a dict for the requests module
         Field('query_data', 'string'), # the cql query, wrapped in whatever formatting is required by the treestore
-        Field('treestore_name', 'string') # just the name of the treestore for labeling purposes
+        Field('treestore_name', 'string'), # just the name of the treestore for labeling purposes
         migrate=migrate,
         )
     db.define_table(
         'treestore_result',
         Field('treestore_query_id', db.treestore_query),
-        Field('result', 'string'),
+        Field('tree_result', 'string'),
         migrate=migrate
         )
 define_tables(db)
