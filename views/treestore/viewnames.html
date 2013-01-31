@@ -1,0 +1,11 @@
+{{extend 'layout.html'}}
+
+<h2>Inserted names</h2>
+(if empty, all names already in database)
+<br>
+{{for name in inserted_names:}}
+name = {{=name}}
+id = {{=inserted_names[name]}}
+<br>
+{{pass}}
+
