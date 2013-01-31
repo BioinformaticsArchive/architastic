@@ -98,6 +98,9 @@ $(document).ready(function(){
 						dropDownMenu.show();
 					});
 				}
+				$('.tnrsNameChooser').on('change', function(e){
+					alert($(this).text() + ' changed');
+				}); 
 				/*
 				for (var i = 0; i < matchedList.length; i++){
 					var matchBlob = matchedList[i];
