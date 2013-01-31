@@ -72,17 +72,21 @@ $(document).ready(function(){
 							if(! nameFromTNRS) {
 								nameFromTNRS = mo.matchedName;
 							}
-							nameFromTNRS = nameFromTNRS + ' (from ' + mo.sourceId + ')'
+							var userNameFromTNRS = nameFromTNRS + ' (from ' + mo.sourceId + ')'
 							if (mo.is_in_tree_store) {
-								var valPair = [nameFromTNRS, mo.uri]
-								knownNames[knownNames.length] =  {value : valPair, text: nameFromTNRS};
+								var valPair = JSON.stringify([nameFromTNRS,
+											   mo.uri])
+								knownNames[knownNames.length] =  {value : valPair, 
+									text: userNameFromTNRS
+								};
 								if (mo.uri == matchBlob.taxonUri) {
 									defVal = valPair;
 								}
 							}
 						}
 						if (knownNames.length != 1) {
-							$('<option />', {val : ['',''], text : 'UNMATCHED'}).appendTo(dropDownMenu);
+							$('<option />', {value : "['','']", 
+								             text : 'UNMATCHED'}).appendTo(dropDownMenu);
 						
 						}
 						for (var mci=0; mci < knownNames.length; mci++) {
@@ -99,7 +103,11 @@ $(document).ready(function(){
 					});
 				}
 				$('.tnrsNameChooser').on('change', function(e){
-					alert($(this).text() + ' changed');
+					var target = e.currentTarget;
+					var i = target.selectedIndex;
+					var opt = target.options[i];
+					var v = JSON.parse(opt.value);
+					alert(v[0] + ' has uri ' + v[1]);
 				}); 
 				/*
 				for (var i = 0; i < matchedList.length; i++){
