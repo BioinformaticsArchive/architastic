@@ -84,9 +84,10 @@ def query_treestore(taxon_uid_tuples, treestore_name='http://opentree-dev.bio.ku
         #this needs to have the literal curlies and quotes embedded in it, since it is sent raw 
         #and not prettied up by requests
         data = '{"queryString": "%s"}' % name_string
-        resp = requests.post(SUBMIT_URI,
-            headers=headers,
-            data=data)
+        try:
+            resp = requests.post(SUBMIT_URI, headers=headers, data=data)
+        except requests.exceptions.ConnectionError as err:
+            sys.exit('\nError connecting to treestore %s!\n%s' % (treestore_name, err)) 
         
         return resp.text
 
@@ -148,7 +149,13 @@ def write_resolved_names(submitted_name_list, names_response, outp):
 #MTH & DJZ
 all_results = []
 for inp_stream in inp_stream_list:
+    #first split on newlines
     name_list = [unicode(line.strip()) for line in inp_stream if len(line.strip()) > 0]
+    #then on commas
+    split_list = []
+    for n in name_list:
+        split_list.extend(n.split(','))
+    name_list = [ tax.strip() for tax in split_list ]
 
     batch_size = 10
     curr_ind = 0
@@ -191,14 +198,13 @@ for inp_stream in inp_stream_list:
 
     #DJZ
     taxon_tuples = []
-    #for subTaxDict in retrieve_results[NAMES_KEY]:
     for subTaxDict in all_results:
         for singleMatchDict in subTaxDict[u'matches']:
             taxon_tuples.append((singleMatchDict[u'matchedName'], singleMatchDict[u'uri']))
     
     #tree_string = query_treestore(taxon_tuples, treestore_name='rdftreestore')
     tree_string = query_treestore(taxon_tuples)
-    print tree_string
+    sys.stdout.write('%s\n' % tree_string)
     
 end_time = time.time()
 diff_time = end_time - start_time
