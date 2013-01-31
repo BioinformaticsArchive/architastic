@@ -1,11 +1,22 @@
 #!/usr/bin/env python
 '''
-Example of a client of the demo of the TNRS API described at:
-    http://www.evoio.org/wiki/Phylotastic/TNRS
+Mark Holder and Derrick Zwickl
 
-Reads names (separated by newline characters) from file names passed in as
-    command-line arguments (or reads name from standard input if no arguments
-    are given).
+Example of a client that:
+    1. Takes a list of input taxon names
+    2. Sends them to a TNRS following the demo of the TNRS API described at:
+        http://www.evoio.org/wiki/Phylotastic/TNRS
+    3. Queries a treestore to obtain a pruned subtree corresponding to those
+        taxa
+
+
+1. Reads names (separated by a mixture of newline or comma characters) from file 
+    names passed in as command-line arguments (or reads name from standard 
+    input if no arguments are given).
+
+2. 
+
+Passes 
 
 Outputs tab-delimited summary of the matches for each query sorted by score of 
     the match (or the submitted name followed tabs and a newline if no match
@@ -15,7 +26,8 @@ Writes status message and a summary of the time taken to standard error (note
     that some of the time taken in the summary is the reading and writing of 
     names in this script, not the TNRS service).
 
-Treestore functions
+
+treestore.Treestore functions
 get_names(self, tree_name=None, format='json')
 get_subtree(self, contains=[], match_all=False, format='newick')
 '''
@@ -148,6 +160,7 @@ def write_resolved_names(submitted_name_list, names_response, outp):
 
 #MTH & DJZ
 all_results = []
+write_tnrs_summary = False
 for inp_stream in inp_stream_list:
     #first split on newlines
     name_list = [unicode(line.strip()) for line in inp_stream if len(line.strip()) > 0]
@@ -190,8 +203,9 @@ for inp_stream in inp_stream_list:
             sys.stderr.write('Waiting (%f sec) for processing by tnrs.\n' % sleep_interval)
             time.sleep(sleep_interval)
             sleep_interval *= sleep_interval_increase_factor
-            
-        write_resolved_names(this_batch, retrieve_results[NAMES_KEY], sys.stdout)
+        
+        if write_tnrs_summary:
+            write_resolved_names(this_batch, retrieve_results[NAMES_KEY], sys.stdout)
         curr_ind += batch_size
     
         all_results.extend(retrieve_results[NAMES_KEY])
