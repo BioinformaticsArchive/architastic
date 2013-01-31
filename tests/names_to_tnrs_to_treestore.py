@@ -22,13 +22,11 @@ get_subtree(self, contains=[], match_all=False, format='newick')
 import sys
 try:
     import requests
-except:
+except ImportError:
     sys.exit('You must install the "requests" package by running\n  pip install requests\n\npip can be obtained from http://pypi.python.org/pypi/pip if you do not have it.')
 import time
 import datetime
-import itertools
 import re
-import treestore
 
 sleep_interval = 1.0
 sleep_interval_increase_factor = 1.5
@@ -77,7 +75,7 @@ def query_treestore(taxon_uid_tuples, treestore_name='http://opentree-dev.bio.ku
     if 'opentree' in treestore_name.lower():
         #assuming that this is a url for now
         #port is defined by neo4j
-        PORT=7474
+        PORT = 7474
         #probably not stable url
         SUBMIT_PATH = '/db/data/ext/GetJsons/graphdb/subtreeForNames'
         SUBMIT_URI = treestore_name + ':' + str(PORT) + SUBMIT_PATH
@@ -93,6 +91,11 @@ def query_treestore(taxon_uid_tuples, treestore_name='http://opentree-dev.bio.ku
         return resp.text
 
     elif 'rdf' in treestore_name.lower():
+        try:
+            import treestore
+        except ImportError:
+            sys.exit('You must install the "treestore" package to interface with an RDF treestore.\n Get it from https://github.com/phylotastic/rdf-treestore.')
+
         #instantiate a treestore object, which will look for an attached 
         rdf_treestore = treestore.Treestore()
         
