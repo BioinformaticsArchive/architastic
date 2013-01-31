@@ -105,11 +105,26 @@ def define_tables(db, migrate=True):
     db.define_table(
         'name_from_user',
         Field('tax_query', db.tax_query), # the id of the tax_query that deposited this name
+        Field('treestore_name', db.treestore_names), # a reference to a known treestore name record
         Field('original_name', 'string'), # name in the query
         Field('tnrs_json', 'text'), # hack blurb from TNRS
         Field('taxon_name', 'string'), # user's choice of the name for this taxon (from among the valid names)
         Field('taxon_uri', 'string'), # user's choice of the URI for this name
         Field('match_status', 'string'), # hack a field for storing the mechanism used to choose between the tnrs choices 
+        migrate=migrate
+        )
+    db.define_table(
+        'treestore_query',
+        Field('service_url', 'string'), # the full url for the treestore service, including domain, ports, etc
+        Field('headers', 'string'), # headers stored as JSON to be parsed into a dict for the requests module
+        Field('query_data', 'string'), # the cql query, wrapped in whatever formatting is required by the treestore
+        Field('treestore_name', 'string') # just the name of the treestore for labeling purposes
+        migrate=migrate,
+        )
+    db.define_table(
+        'treestore_result',
+        Field('treestore_query_id', db.treestore_query),
+        Field('result', 'string'),
         migrate=migrate
         )
 define_tables(db)
