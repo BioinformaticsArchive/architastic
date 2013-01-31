@@ -132,7 +132,7 @@ def define_tables(db, migrate=True):
     db.define_table(
         'treestore_result',
         Field('treestore_query_id', db.treestore_query),
-        Field('result', 'string'),
+        Field('tree_result', 'string'),
         migrate=migrate
         )
 define_tables(db)
