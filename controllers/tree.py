@@ -326,7 +326,10 @@ def proxy_tnrs():
     sleep_interval_increase_factor = 1.05
     while matchedList is None:
         resp = requests.get(q.url)
-        data = resp.json()
+        try:
+            data = resp.json()
+        except:
+            data = resp.json
         try:
             matchedList = data['names']
         except KeyError:
