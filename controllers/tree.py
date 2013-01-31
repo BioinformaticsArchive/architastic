@@ -1,5 +1,6 @@
 import requests
 import json
+import time
 
 def _get_tnrs_uri(submit_uri, name_list):
     names_newline_sep = '\n'.join(name_list)
@@ -18,23 +19,6 @@ def _get_tnrs_uri(submit_uri, name_list):
         return resp.url
     else:
         raise HTTP(503) # not sure if there is a better status code to return here...
-b='''        sys.exit('Did not get a URI or redirect from the submit GET operation. Got:\n %s\n' % str(results))
-        min_time = time.time()
-        sleep_interval = 1.0
-        while retrieve_uri:
-            retrieve_response = requests.get(retrieve_uri)
-            retrieve_response.raise_for_status()
-            retrieve_results = retrieve_response.json()
-            if NAMES_KEY in retrieve_results:
-                break
-            min_time = time.time()
-            sys.stderr.write('Waiting (%f sec) for processing by tnrs.\n' % sleep_interval)
-            time.sleep(sleep_interval)
-            sleep_interval *= sleep_interval_increase_factor
-            
-        write_resolved_names(this_batch, retrieve_results[NAMES_KEY], sys.stdout)
-        curr_ind += batch_size
-'''
 
 # form for entering taxa list
 # SQLFORM.factory allows you to create nice forms without pointing 
@@ -172,9 +156,22 @@ def proxy_tnrs():
     if populated and not force_repopulate_from_json:
         db.commit()
         json.dumps([v for v in json2return.itervalues()])
-    resp = requests.get(q.url)
-    data = resp.json()
-    matchedList = data['names']
+
+    # block while the TNRS is thinking....
+    matchedList = None
+    sleep_interval = 1.0
+    sleep_interval_increase_factor = 1.05
+    while matchedList is None:
+        resp = requests.get(q.url)
+        data = resp.json()
+        try:
+            matchedList = data['names']
+        except KeyError:
+            if not 'message' in data:
+                raise HTTP(503)
+            time.sleep(sleep_interval)
+            sleep_interval *= sleep_interval_increase_factor
+
     tree_store_matching_context = None #@TEMP dummy placeholder
     for matchBlob in matchedList:
         all_matches = matchBlob['matches']
