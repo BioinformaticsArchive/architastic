@@ -93,9 +93,8 @@ def define_tables(db, migrate=True):
     # wants to use when referring to that name
     db.define_table(
         'treestore_names',
-        Field('source_id','string',unique=True), # identifier from taxonomic source; must be unique
         Field('taxon_name','string'), # name, might not be unique
-        Field('treestore_id','string'), # ids for a particular treestore
+        Field('treestore_id','string',unique=True), # ids for a particular treestore
         migrate=migrate
         )
     db.define_table(

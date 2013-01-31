@@ -8,7 +8,8 @@
 	{{=TR(TD(name.original_name, _class='tnrsOrigName'), 
 	      TD(DIV(name.tnrs_json, _class='tnrsJsonBlurb'),
 	         DIV(name.taxon_name, _class='tnrsTaxonName'),
-	         DIV(name.taxon_uri, _class='tnrsTaxonUri')),
+	         DIV(name.taxon_uri, _class='tnrsTaxonUri'),
+	         SELECT(_class='tnrsNameChooser')),
 	      _origname=name.original_name,
 	      _class='tnrsNameRow',
 	      _nameIdInQuery=str(name.id),
@@ -29,6 +30,8 @@ $(document).ready(function(){
 		if ($(this).text() == "") {
 			hasEmptyJSON = true;
 		}
+	});
+	$(".tnrsNameChooser").each(function() {
 		$(this).hide();
 	});
 	$('.tnrsJsonBlurbHeader').hide();
@@ -60,6 +63,39 @@ $(document).ready(function(){
 						var matchInfoAsJson = JSON.stringify(matches);
 						var jsonCell = $(this).find('.tnrsJsonBlurb');
 						jsonCell.text(matchInfoAsJson);
+						var dropDownMenu = $(this).find('.tnrsNameChooser');
+						var knownNames = new Array();
+						var defVal = null;
+						for (var mci=0; mci < matches.length; mci++) {
+							var mo = matches[mci];
+							var nameFromTNRS = mo.acceptedName;
+							if(! nameFromTNRS) {
+								nameFromTNRS = mo.matchedName;
+							}
+							nameFromTNRS = nameFromTNRS + ' (from ' + mo.sourceId + ')'
+							if (mo.is_in_tree_store) {
+								var valPair = [nameFromTNRS, mo.uri]
+								knownNames[knownNames.length] =  {value : valPair, text: nameFromTNRS};
+								if (mo.uri == matchBlob.taxonUri) {
+									defVal = valPair;
+								}
+							}
+						}
+						if (knownNames.length != 1) {
+							$('<option />', {val : ['',''], text : 'UNMATCHED'}).appendTo(dropDownMenu);
+						
+						}
+						for (var mci=0; mci < knownNames.length; mci++) {
+							var mo = knownNames[mci];
+							$('<option />', mo).appendTo(dropDownMenu);
+						}
+						if (defVal) {
+							dropDownMenu.val(defVal);
+						}
+						jsonCell.hide();
+						nameCell.hide();
+						uriCell.hide();
+						dropDownMenu.show();
 					});
 				}
 				/*
