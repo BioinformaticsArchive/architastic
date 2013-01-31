@@ -1,6 +1,11 @@
 import requests
 import json
 import time
+import sys
+
+def _debug(s):
+    sys.stderr.write(s)
+    sys.stderr.write('\n')
 
 def _get_tnrs_uri(submit_uri, name_list):
     names_newline_sep = '\n'.join(name_list)
@@ -104,7 +109,7 @@ def fix_name():
         raise HTTP(503, "Missing arg")
     query_row = db.tax_query[local_query_id]
     name_row = db.name_from_user[local_name_id]
-    name_row.update(match_status=NameMatchingTypeFacets.USER,
+    name_row.update_record(match_status=NameMatchingTypeFacets.USER,
                     taxon_name=name,
                     taxon_uri=uri)
     db.commit()
@@ -136,12 +141,15 @@ def proxy_tnrs():
     json2return = {}
     populated = False
     name_row_list = db(db.name_from_user.tax_query == q).select()
+    _debug('len(name_row_list) = %d' % len(name_row_list))
     for row in name_row_list:
+        _debug('row.match_status = %s \n' % row.match_status)
+    
         if row.match_status == NameMatchingTypeFacets.UNCHECKED:
             all_matches = []
             mj = json.dumps(all_matches)
             match_status = NameMatchingTypeFacets.UNRECOGNIZED
-            row.update(tnrs_json=mj,
+            row.update_record(tnrs_json=mj,
                        match_status=match_status,
                        taxon_name='',
                        taxon_uri='')
@@ -169,9 +177,10 @@ def proxy_tnrs():
 
     # no need to grab the JSON twice...
     if populated and not force_repopulate_from_json:
+        _debug('Returning JSON representation of the populated name row')
         db.commit()
         return json.dumps([v for v in json2return.itervalues()])
-
+    _debug('Reading JSON from ' + q.url)
     # block while the TNRS is thinking....
     matchedList = None
     sleep_interval = 1.0
@@ -234,10 +243,11 @@ def proxy_tnrs():
         submitted_name = matchBlob['submittedName']
         matched_db_row_list = db( (db.name_from_user.tax_query == q) & (db.name_from_user.original_name == submitted_name)).select()
         for matched_db_row in matched_db_row_list:
-            matched_db_row.update(tnrs_json=mj,
+            matched_db_row.update_record(tnrs_json=mj,
                                   match_status=match_status,
                                   taxon_name=taxon_name,
                                   taxon_uri=taxon_uri)
+            db.commit()
             row_key = str(q_id) + ' ' + str(matched_db_row.id)
             json2return[row_key] = {
                 'tnrsQueryId' : q_id,
@@ -248,5 +258,12 @@ def proxy_tnrs():
                 'taxonUri' : taxon_uri,
                 'submittedName' : str(matched_db_row.original_name)
             }
-    db.commit()      
+            _debug('at the end matched_db_row.match_status = %s' % matched_db_row.match_status)
+
+    db.commit()
+    nrl = db(db.name_from_user.tax_query == q).select()
+    _debug('at the end len(name_row_list) = %d' % len(nrl))
+    for row in nrl:
+        _debug('at the end row.match_status = %s' % row.match_status)
+
     return json.dumps([v for v in json2return.itervalues()])
