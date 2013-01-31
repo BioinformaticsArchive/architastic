@@ -28,20 +28,19 @@ import time
 import datetime
 import itertools
 import re
+import json
 
 sleep_interval = 1.0
 sleep_interval_increase_factor = 1.5
 
 DOMAIN = 'http://127.0.0.1:8000'
-SUBMIT_PATH = 'architastic/auto/tree'
+SUBMIT_PATH = 'architastic/auto/tree.json'
 SUBMIT_URI = DOMAIN + '/' + SUBMIT_PATH
-NAMES_KEY = u'names'
-headers = {'Content-Type':'Application/json'}
 #this needs to have the literal curlies and quotes embedded in it, since it is sent raw 
 #and not prettied up by requests
-data = {"taxa": open(sys.argv[1], 'rU').read()}
+data = {"taxa" : open(sys.argv[1], 'rU').read()}
+print data
 resp = requests.post(SUBMIT_URI,
-    headers=headers,
     data=data)
 
 print resp.text
