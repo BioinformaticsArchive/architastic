@@ -2,6 +2,10 @@
 
 <h2>Taxa</h2>
 {{=DIV('Processing call to TNRS...', _class="statusDiv")}}
+<form enctype="multipart/form-data"
+      action="{{=URL('find_tree', args=(tax_submission_id))}}" method="get">
+<input id="findTreeSubmitBtn" type="submit" style="DISPLAY: none" value="Find Tree" />
+</form>
 <table border="1">
 	<tr><th>Submitted Name</th><th>Taxon Name</th></tr>
 {{for name in name_row_list:}}
@@ -110,7 +114,7 @@ $(document).ready(function(){
 					var tableRow = target.parentElement.parentElement;
 					var thisNameInd = $(tableRow).attr('nameIdInQuery');
 					var thisTNRSQueryInd = $(tableRow).attr('tnrsQueryId');
-					alert(v[0] + ' has uri ' + v[1] + ' for ' + thisNameInd + ' in ' + thisTNRSQueryInd);
+					//alert(v[0] + ' has uri ' + v[1] + ' for ' + thisNameInd + ' in ' + thisTNRSQueryInd);
 					var fnUrl = $("#fixNameUrl").text();
 					var fixNameData = {
 						name : userChosenName,
@@ -119,12 +123,13 @@ $(document).ready(function(){
 						localQueryId : thisTNRSQueryInd
 					};
 					var jqxhr = $.post(fnUrl, fixNameData, function() {
-						alert("success");
+						//alert("success");
 					})
 					.fail(function() { alert("error"); });
 					
 				});
 				$('.statusDiv').text("TNRS step completed.");
+				$('#findTreeSubmitBtn').show();
 				/*
 				for (var i = 0; i < matchedList.length; i++){
 					var matchBlob = matchedList[i];

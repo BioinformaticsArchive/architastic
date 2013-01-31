@@ -77,7 +77,11 @@ def show():
     name_row_list = db(db.name_from_user.tax_query == q).select()
     return {'tnrs_url' : q.url,
             'name_row_list' : name_row_list, 
-            'tax_query_id': q_id }
+            'tax_query_id': q_id,
+            'tax_submission_id' : q_id # at some point the session/submission id may need
+                                       #       to be distinct from the query id (if a session calls the TNRS
+                                       #       multiple times...)
+            }
 
 class NameMatchingTypeFacets:
     PERFECT_AMBIGUOUS = 'multiple perfect matches'
