@@ -2,6 +2,10 @@
 
 <h2>Taxa</h2>
 {{=DIV('Processing call to TNRS...', _class="statusDiv")}}
+<form enctype="multipart/form-data"
+      action="{{=URL('find_tree', args=(tax_submission_id))}}" method="get">
+<input id="findTreeSubmitBtn" type="submit" style="DISPLAY: none" value="Find Tree" />
+</form>
 <table border="1">
 	<tr><th>Submitted Name</th><th>Taxon Name</th></tr>
 {{for name in name_row_list:}}
@@ -21,23 +25,20 @@
 
 <p>TNRS results are/will be from {{=A(tnrs_url, _href=tnrs_url, _class='tnrsURL', _id="tnrsURL")}}</p>
 {{proxy_url=URL('proxy_tnrs', args=(tax_query_id,))}}
-<div>Proxy TNRS results are/will be from {{=A(proxy_url, _href=proxy_url, _class='proxyURL', _id="proxyURL")}}</p>
+<div>Proxy TNRS results are/will be from {{=A(proxy_url, _href=proxy_url, _class='proxyURL', _id="proxyURL")}}</div>
+
+{{fix_name_url=URL('fix_name')}}
+<div>Name edits can be done via posts to {{=A(fix_name_url, _href=fix_name_url, _class='fixNameUrl', _id="fixNameUrl")}}</div>
 
 <script type="text/javascript">
 $(document).ready(function(){
-	var hasEmptyJSON = false;
-	$(".tnrsJsonBlurb").each(function() {
-		if ($(this).text() == "") {
-			hasEmptyJSON = true;
-		}
-	});
 	$(".tnrsNameChooser").each(function() {
 		$(this).hide();
 	});
 	$('.tnrsJsonBlurbHeader').hide();
 	/*$("span").text(blurbArray.length);*/
 	var f = $(".statusDiv").first();
-	if (hasEmptyJSON) {
+	if (true) {
 		f.text("processing...");
 		$.ajax({
 			url : $("#proxyURL").text(),
@@ -45,6 +46,7 @@ $(document).ready(function(){
 			crossDomain : false,
 			contentType : 'application/json',
 			success : function(data, textStatus, jqXHR) {
+				$('.statusDiv').text("proxy returned data...");
 				var matchedList = data;
 				for (var i = 0; i < matchedList.length; i++){
 					var matchBlob = matchedList[i];
@@ -107,9 +109,27 @@ $(document).ready(function(){
 					var i = target.selectedIndex;
 					var opt = target.options[i];
 					var v = JSON.parse(opt.value);
-					alert(v[0] + ' has uri ' + v[1]);
+					var userChosenName = v[0];
+					var userChosenUri = v[1];
+					var tableRow = target.parentElement.parentElement;
+					var thisNameInd = $(tableRow).attr('nameIdInQuery');
+					var thisTNRSQueryInd = $(tableRow).attr('tnrsQueryId');
+					//alert(v[0] + ' has uri ' + v[1] + ' for ' + thisNameInd + ' in ' + thisTNRSQueryInd);
+					var fnUrl = $("#fixNameUrl").text();
+					var fixNameData = {
+						name : userChosenName,
+						uri : userChosenUri,
+						localNameId : thisNameInd,
+						localQueryId : thisTNRSQueryInd
+					};
+					var jqxhr = $.post(fnUrl, fixNameData, function() {
+						//alert("success");
+					})
+					.fail(function() { alert("error"); });
+					
 				});
 				$('.statusDiv').text("TNRS step completed.");
+				$('#findTreeSubmitBtn').show();
 				/*
 				for (var i = 0; i < matchedList.length; i++){
 					var matchBlob = matchedList[i];
@@ -136,8 +156,8 @@ $(document).ready(function(){
 				}*/
 			},
 			error : function(jqXHR, textStatus, errorThrown) {
-				$(".flash").html("TNRS look: " + jqXHR.responseText).slideDown();
-				f.text("failure");
+				$(".flash").html("Error: TNRS lookup failed").slideDown();
+				f.text("Whoops! The call to TNRS did not work out the way we were hoping it would. That is a real shame.  I'm not sure what to suggest...");
 			}
 		});
 	}

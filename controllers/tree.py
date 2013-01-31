@@ -1,6 +1,11 @@
 import requests
 import json
 import time
+import sys
+
+def _debug(s):
+    sys.stderr.write(s)
+    sys.stderr.write('\n')
 
 def _get_tnrs_uri(submit_uri, name_list):
     names_newline_sep = '\n'.join(name_list)
@@ -62,6 +67,26 @@ def find():
                                  match_status='')
     return redirect(URL('show', args=(new_id,)))
 
+# Contact tree store to get a tree for the non-empty names
+def find_tree():
+    try:
+        q_id = request.args[-1]
+        q = db.tax_query[q_id]
+    except:
+        raise HTTP(404)
+    name_row_list = db(db.name_from_user.tax_query == q).select()
+    matched_names = []
+    for row in name_row_list:
+        s = str(row.taxon_name)
+        if s:
+            matched_names.append(s)
+    return requests.post(URL(a=request.application,
+                             c='auto', 
+                             f='tree.json',
+                             scheme='http'),
+                         data={'taxa' : '\n'.join(matched_names)}
+                        ).text
+
 # Shows results from TNRS call
 def show():
     try:
@@ -70,9 +95,14 @@ def show():
     except:
         raise HTTP(404)
     name_row_list = db(db.name_from_user.tax_query == q).select()
+
     return {'tnrs_url' : q.url,
             'name_row_list' : name_row_list, 
-            'tax_query_id': q_id }
+            'tax_query_id': q_id,
+            'tax_submission_id' : q_id # at some point the session/submission id may need
+                                       #       to be distinct from the query id (if a session calls the TNRS
+                                       #       multiple times...)
+            }
 
 class NameMatchingTypeFacets:
     PERFECT_AMBIGUOUS = 'multiple perfect matches'
@@ -84,7 +114,7 @@ class NameMatchingTypeFacets:
     ONLY_MATCH_IN_STORE = 'imperfect but only match in tree store'
     UNCHECKED = ''
 
-force_repopulate_from_json = True # debugging
+force_repopulate_from_json = False # debugging
 ncbi_only = False
       
 #@ TEMP need to get the names from the tree_store to answer this correctly...
@@ -93,6 +123,21 @@ def _is_known_name(name_uri_tuple, source, tree_store_matching_context):
     if ncbi_only:
         return source.upper() in ['NCBI']
     return True
+
+def fix_name():
+    try:
+        name = request.post_vars['name']
+        uri = request.post_vars['uri']
+        local_name_id = request.post_vars['localNameId']
+        local_query_id = request.post_vars['localQueryId']
+    except KeyError:
+        raise HTTP(503, "Missing arg")
+    query_row = db.tax_query[local_query_id]
+    name_row = db.name_from_user[local_name_id]
+    name_row.update_record(match_status=NameMatchingTypeFacets.USER,
+                    taxon_name=name,
+                    taxon_uri=uri)
+    db.commit()
 
 # grab JSON from the TNRS and return it. This avoids problems with cross-domain scripting
 #   restriction
@@ -121,12 +166,15 @@ def proxy_tnrs():
     json2return = {}
     populated = False
     name_row_list = db(db.name_from_user.tax_query == q).select()
+    _debug('len(name_row_list) = %d' % len(name_row_list))
     for row in name_row_list:
+        _debug('row.match_status = %s \n' % row.match_status)
+    
         if row.match_status == NameMatchingTypeFacets.UNCHECKED:
             all_matches = []
             mj = json.dumps(all_matches)
             match_status = NameMatchingTypeFacets.UNRECOGNIZED
-            row.update(tnrs_json=mj,
+            row.update_record(tnrs_json=mj,
                        match_status=match_status,
                        taxon_name='',
                        taxon_uri='')
@@ -154,9 +202,10 @@ def proxy_tnrs():
 
     # no need to grab the JSON twice...
     if populated and not force_repopulate_from_json:
+        _debug('Returning JSON representation of the populated name row')
         db.commit()
-        json.dumps([v for v in json2return.itervalues()])
-
+        return json.dumps([v for v in json2return.itervalues()])
+    _debug('Reading JSON from ' + q.url)
     # block while the TNRS is thinking....
     matchedList = None
     sleep_interval = 1.0
@@ -219,10 +268,11 @@ def proxy_tnrs():
         submitted_name = matchBlob['submittedName']
         matched_db_row_list = db( (db.name_from_user.tax_query == q) & (db.name_from_user.original_name == submitted_name)).select()
         for matched_db_row in matched_db_row_list:
-            matched_db_row.update(tnrs_json=mj,
+            matched_db_row.update_record(tnrs_json=mj,
                                   match_status=match_status,
                                   taxon_name=taxon_name,
                                   taxon_uri=taxon_uri)
+            db.commit()
             row_key = str(q_id) + ' ' + str(matched_db_row.id)
             json2return[row_key] = {
                 'tnrsQueryId' : q_id,
@@ -233,5 +283,12 @@ def proxy_tnrs():
                 'taxonUri' : taxon_uri,
                 'submittedName' : str(matched_db_row.original_name)
             }
-    db.commit()      
+            _debug('at the end matched_db_row.match_status = %s' % matched_db_row.match_status)
+
+    db.commit()
+    nrl = db(db.name_from_user.tax_query == q).select()
+    _debug('at the end len(name_row_list) = %d' % len(nrl))
+    for row in nrl:
+        _debug('at the end row.match_status = %s' % row.match_status)
+
     return json.dumps([v for v in json2return.itervalues()])
