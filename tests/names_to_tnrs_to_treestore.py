@@ -31,7 +31,7 @@ treestore.Treestore functions
 get_names(self, tree_name=None, format='json')
 get_subtree(self, contains=[], match_all=False, format='newick')
 '''
-import sys
+import sys, os
 try:
     import requests
 except ImportError:
@@ -48,6 +48,7 @@ SUBMIT_PATH = 'tnrs/submit'
 SUBMIT_URI = DOMAIN + '/' + SUBMIT_PATH
 NAMES_KEY = u'names'
 header_written = False
+USE_RDF = 'RDFTREESTORE' in os.environ
 
 start_time = time.time()
 
@@ -216,6 +217,10 @@ for inp_stream in inp_stream_list:
         for singleMatchDict in subTaxDict[u'matches']:
             taxon_tuples.append((singleMatchDict[u'matchedName'], singleMatchDict[u'uri']))
     
+    if USE_RDF:
+        tree_string = query_treestore(taxon_tuples, treestore_name='rdftreestore')
+    else:
+        tree_string = query_treestore(taxon_tuples)
     #tree_string = query_treestore(taxon_tuples, treestore_name='rdftreestore')
     tree_string = query_treestore(taxon_tuples)
     sys.stdout.write('%s\n' % tree_string)
