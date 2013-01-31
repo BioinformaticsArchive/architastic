@@ -84,7 +84,7 @@ class NameMatchingTypeFacets:
     ONLY_MATCH_IN_STORE = 'imperfect but only match in tree store'
     UNCHECKED = ''
 
-force_repopulate_from_json = True # debugging
+force_repopulate_from_json = False # debugging
 ncbi_only = False
       
 #@ TEMP need to get the names from the tree_store to answer this correctly...
@@ -93,6 +93,21 @@ def _is_known_name(name_uri_tuple, source, tree_store_matching_context):
     if ncbi_only:
         return source.upper() in ['NCBI']
     return True
+
+def fix_name():
+    try:
+        name = request.post_vars['name']
+        uri = request.post_vars['uri']
+        local_name_id = request.post_vars['localNameId']
+        local_query_id = request.post_vars['localQueryId']
+    except KeyError:
+        raise HTTP(503, "Missing arg")
+    query_row = db.tax_query[local_query_id]
+    name_row = db.name_from_user[local_name_id]
+    name_row.update(match_status=NameMatchingTypeFacets.USER,
+                    taxon_name=name,
+                    taxon_uri=uri)
+    db.commit()
 
 # grab JSON from the TNRS and return it. This avoids problems with cross-domain scripting
 #   restriction
@@ -155,7 +170,7 @@ def proxy_tnrs():
     # no need to grab the JSON twice...
     if populated and not force_repopulate_from_json:
         db.commit()
-        json.dumps([v for v in json2return.itervalues()])
+        return json.dumps([v for v in json2return.itervalues()])
 
     # block while the TNRS is thinking....
     matchedList = None

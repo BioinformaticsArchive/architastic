@@ -23,7 +23,7 @@
 {{proxy_url=URL('proxy_tnrs', args=(tax_query_id,))}}
 <div>Proxy TNRS results are/will be from {{=A(proxy_url, _href=proxy_url, _class='proxyURL', _id="proxyURL")}}</div>
 
-{{fix_name_url=URL('fix_name_tnrs')}}
+{{fix_name_url=URL('fix_name')}}
 <div>Name edits can be done via posts to {{=A(fix_name_url, _href=fix_name_url, _class='fixNameUrl', _id="fixNameUrl")}}</div>
 
 <script type="text/javascript">
@@ -119,7 +119,9 @@ $(document).ready(function(){
 					var fnUrl = $("#fixNameUrl").text();
 					var fixNameData = {
 						name : userChosenName,
-						uri : userChosenUri
+						uri : userChosenUri,
+						localNameId : thisNameInd,
+						localQueryId : thisTNRSQueryInd
 					};
 					var jqxhr = $.post(fnUrl, fixNameData, function() {
 						alert("success");
