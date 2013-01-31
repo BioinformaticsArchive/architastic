@@ -67,6 +67,26 @@ def find():
                                  match_status='')
     return redirect(URL('show', args=(new_id,)))
 
+# Contact tree store to get a tree for the non-empty names
+def find_tree():
+    try:
+        q_id = request.args[-1]
+        q = db.tax_query[q_id]
+    except:
+        raise HTTP(404)
+    name_row_list = db(db.name_from_user.tax_query == q).select()
+    matched_names = []
+    for row in name_row_list:
+        s = str(row.taxon_name)
+        if s:
+            matched_names.append(s)
+    return requests.post(URL(a=request.application,
+                             c='auto', 
+                             f='tree.json',
+                             scheme='http'),
+                         data={'taxa' : '\n'.join(matched_names)}
+                        ).text
+
 # Shows results from TNRS call
 def show():
     try:
@@ -75,6 +95,7 @@ def show():
     except:
         raise HTTP(404)
     name_row_list = db(db.name_from_user.tax_query == q).select()
+
     return {'tnrs_url' : q.url,
             'name_row_list' : name_row_list, 
             'tax_query_id': q_id,
