@@ -39,6 +39,56 @@ except ImportError:
 import time
 import datetime
 import re
+import string
+from argparse import ArgumentParser
+
+#this is for used for type checking as a type= argument in argparse.add_argument
+def proportion_type(string):
+    #it would be nice to be able to pass as specific range, but the func can only take 1 arg
+    min_val, max_val = 0.0, 1.0
+    value = float(string)
+    if value < min_val or value > max_val:
+        mess = 'value %f must be between %.2f and %.2f' % (value, min_val, max_val)
+        raise ArgumentTypeError(mess)
+    return value
+
+'''
+#use argparse module to parse commandline input
+parser = ArgumentParser(description='attempt to run a full (but basic ')
+
+#use mutExclGroup.add_argument instead of parser.add_argument for mutually exclusive options
+#mutExclGroup = parser.add_mutually_exclusive_group()
+
+#add possible arguments
+#flag
+parser.add_argument('-v', '--invert-match', dest='invertMatch', action='store_true', default=False,
+                    help='invert the sense of the match (default false)')
+
+#string
+parser.add_argument('-f', '--patternfile', dest='patternFile', type=str, default=None, 
+                    help='file from which to read patterns (you must still pass a pattern on the command line, which is ignored)')
+
+#multiple arguments
+parser.add_argument('--range', dest='baseRange', nargs=2, type=int, default=[1, 9999999], metavar=('startbase', 'endbase'),
+                    help='range of cluster sizes (number of members)')
+
+#single number value
+parser.add_argument('-mp', '--min-match-prop', dest='minMatchProportion', type=proportion_type, default=0.0,
+                    help='proportion of hit that must overlap query (default 0.0)')
+
+#variable number of arguments
+parser.add_argument('--taxa', default=None, 
+                    help='a list of comma delimited taxon names to query')
+
+parser.add_argument('--taxon-uids', default=None, 
+                    help='a list of comma delimited taxon names to query')
+
+parser.add_argument('-o', '--output', dest='outFile', type=str, default=None, 
+                    help='file to write output to (default stdout)')
+
+#now process the command line
+options = parser.parse_args()
+'''
 
 sleep_interval = 1.0
 sleep_interval_increase_factor = 1.5
@@ -50,7 +100,7 @@ NAMES_KEY = u'names'
 header_written = False
 USE_RDF = 'RDFTREESTORE' in os.environ
 
-start_time = time.time()
+tnrs_start_time = time.time()
 
 #open the newline delimited source of taxon names
 if len(sys.argv) == 1:
@@ -89,14 +139,19 @@ def query_treestore(taxon_uid_tuples, treestore_name='http://opentree-dev.bio.ku
         #assuming that this is a url for now
         #port is defined by neo4j
         PORT = 7474
-        #probably not stable url
-        SUBMIT_PATH = '/db/data/ext/GetJsons/graphdb/subtreeForNames'
+
+        #probably not stable urls
+        #this is what the path was previously with raw text query
+        #SUBMIT_PATH = '/db/data/ext/GetJsons/graphdb/subtreeForNames'
+        #newest, with cql query
+        SUBMIT_PATH = '/db/data/ext/GetJsons/graphdb/subtree'
+        
         SUBMIT_URI = treestore_name + ':' + str(PORT) + SUBMIT_PATH
 
         headers = {'Content-Type':'Application/json'}
-        #this needs to have the literal curlies and quotes embedded in it, since it is sent raw 
-        #and not prettied up by requests
-        data = '{"queryString": "%s"}' % name_string
+        #cql post
+        data = '{"query":"pt.taxaForSubtree=\\"%s\\""}' % name_string
+        
         try:
             resp = requests.post(SUBMIT_URI, headers=headers, data=data)
         except requests.exceptions.ConnectionError as err:
@@ -161,7 +216,14 @@ def write_resolved_names(submitted_name_list, names_response, outp):
 
 #MTH & DJZ
 all_results = []
-write_tnrs_summary = False
+write_tnrs_summary = True
+
+#this defines whether a match score is "good enough" to be passed on to the treestore
+accepted_match_threshold = 0.5
+
+#if this is True, only pass on the best scoring match, even if there are multiple > accepted_match_threshold
+only_accept_best = True
+
 for inp_stream in inp_stream_list:
     #first split on newlines
     name_list = [unicode(line.strip()) for line in inp_stream if len(line.strip()) > 0]
@@ -210,26 +272,41 @@ for inp_stream in inp_stream_list:
         curr_ind += batch_size
     
         all_results.extend(retrieve_results[NAMES_KEY])
+    
+    tnrs_end_time = time.time()
 
-    #DJZ
-    taxon_tuples = []
-    for subTaxDict in all_results:
-        for singleMatchDict in subTaxDict[u'matches']:
+#DJZ
+treestore_start_time = time.time()
+taxon_tuples = []
+
+min_score_threshold = 0.5
+pass_multiple_matches = False
+
+for subTaxDict in all_results:
+    for singleMatchDict in sorted(subTaxDict[u'matches']):
+        if float(singleMatchDict['score']) >= min_score_threshold:
             taxon_tuples.append((singleMatchDict[u'matchedName'], singleMatchDict[u'uri']))
-    
-    if USE_RDF:
-        tree_string = query_treestore(taxon_tuples, treestore_name='rdftreestore')
-    else:
-        tree_string = query_treestore(taxon_tuples)
-    #tree_string = query_treestore(taxon_tuples, treestore_name='rdftreestore')
+            if not pass_multiple_matches:
+                break
+
+if USE_RDF:
+    tree_string = query_treestore(taxon_tuples, treestore_name='rdftreestore')
+else:
     tree_string = query_treestore(taxon_tuples)
-    sys.stdout.write('%s\n' % tree_string)
-    
-end_time = time.time()
-diff_time = end_time - start_time
-td = datetime.timedelta(seconds=diff_time)
-min_diff_time = min_time - start_time
-min_td = datetime.timedelta(seconds=min_diff_time)
-sys.stderr.write('total time = %s\n' % str(td))
-sys.stderr.write('min tnrs time = %s\n' % str(min_td))
+#tree_string = query_treestore(taxon_tuples, treestore_name='rdftreestore')
+#tree_string = query_treestore(taxon_tuples)
+sys.stdout.write('%s\n' % tree_string)
+treestore_end_time = time.time()
+
+#end_time = time.time()
+#diff_time = end_time - start_time
+tnrs_time = datetime.timedelta(seconds=(tnrs_end_time - tnrs_start_time))
+treestore_time = datetime.timedelta(seconds=(treestore_end_time - treestore_start_time))
+sys.stderr.write('%s %s\n' % (string.rjust('tnrs time', 15), string.rjust(str(tnrs_time), 15)))
+sys.stderr.write('%s %s\n' % (string.rjust('treestore time', 15), string.rjust(str(treestore_time), 15)))
+#td = datetime.timedelta(seconds=diff_time)
+#min_diff_time = min_time - start_time
+#min_td = datetime.timedelta(seconds=min_diff_time)
+#sys.stderr.write('total time = %s\n' % str(td))
+#sys.stderr.write('min tnrs time = %s\n' % str(min_td))
 
