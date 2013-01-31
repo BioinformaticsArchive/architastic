@@ -33,7 +33,8 @@ import json
 sleep_interval = 1.0
 sleep_interval_increase_factor = 1.5
 
-DOMAIN = 'http://127.0.0.1:8000'
+#DOMAIN = 'http://127.0.0.1:8000'
+DOMAIN = 'http://opentree-dev.bio.ku.edu:8000'
 SUBMIT_PATH = 'architastic/auto/tree.json'
 SUBMIT_URI = DOMAIN + '/' + SUBMIT_PATH
 #this needs to have the literal curlies and quotes embedded in it, since it is sent raw 
