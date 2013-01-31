@@ -1,7 +1,7 @@
 {{extend 'layout.html'}}
 
 <h2>Taxa</h2>
-{{=DIV(tnrs_url, _class='tnrsURL', _id="tnrsURL")}}
+{{=DIV('Processing call to TNRS...', _class="statusDiv")}}
 <table border="1">
 	<tr><th>Submitted Name</th><th>Taxon Name</th></tr>
 {{for name in name_row_list:}}
@@ -73,7 +73,7 @@ $(document).ready(function(){
 								nameFromTNRS = mo.matchedName;
 							}
 							var userNameFromTNRS = nameFromTNRS + ' (from ' + mo.sourceId + ')'
-							if (mo.is_in_tree_store) {
+							if (mo.is_in_tree_store && mo.uri) {
 								var valPair = JSON.stringify([nameFromTNRS,
 											   mo.uri])
 								knownNames[knownNames.length] =  {value : valPair, 
@@ -85,7 +85,7 @@ $(document).ready(function(){
 							}
 						}
 						if (knownNames.length != 1) {
-							$('<option />', {value : "['','']", 
+							$('<option />', {value : '["",""]', 
 								             text : 'UNMATCHED'}).appendTo(dropDownMenu);
 						
 						}
@@ -108,7 +108,8 @@ $(document).ready(function(){
 					var opt = target.options[i];
 					var v = JSON.parse(opt.value);
 					alert(v[0] + ' has uri ' + v[1]);
-				}); 
+				});
+				$('.statusDiv').text("TNRS step completed.");
 				/*
 				for (var i = 0; i < matchedList.length; i++){
 					var matchBlob = matchedList[i];
