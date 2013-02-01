@@ -448,9 +448,9 @@ def proxy_tnrs():
 
     #@TEMP these next 2 lines will become 1 when db.tax_query stores the treestore ID rather than the name
     name_of_treestore = q.treestore
-    return '"' + name_of_treestore + '"'
-    treestore_db_id = db(db.treestores.name_of_treestore == name_of_treestore).select()[0]
-    treestore_record = db.treestores[treestore_db_id]
+    #return '"' + name_of_treestore + '"'
+    treestore_record = db(db.treestores.shortName == name_of_treestore).select()[0]
+    #treestore_record = db.treestores[treestore_db_id]
     for matchBlob in matchedList:
         all_matches = matchBlob['matches']
         perfect_matches = []
