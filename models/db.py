@@ -90,8 +90,11 @@ def define_tables(db, migrate=True):
     # treestores defines the treestores for the controllers
     db.define_table(
         'treestores',
-        Field('name_of_treestore','string'), #name
-        Field('url','string'),
+        Field('shortName','string'), # short name
+        Field('longName','string'), # full name
+        Field('weburl','string'),
+        Field('urlPrefix','string'), # prefix for taxon ids
+        Field('dumpVersion','string'), # current version of the name dump
         migrate=migrate
         )
     # treestore_names defines the entities that the treestore 'knows' about
