@@ -24,7 +24,7 @@ def _get_conf(request):
 
 
 def tree():
-    return "test"
+#    return "test"
 
     t = request.post_vars['taxa']
     if not t:
