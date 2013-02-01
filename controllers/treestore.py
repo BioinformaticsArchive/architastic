@@ -7,10 +7,6 @@ import os
 
 # request names and identifiers from treestore
 
-# eventually want to check name and diff
-#def _get_version_from_treestore
-    # get current taxalist version from treestore
-
 # takes a url, expects a json response
 def _get_data_from_url(url):
     # get JSON from treestore
@@ -25,7 +21,7 @@ def _get_data_from_url(url):
 # the treestore; making sure that all expected blocks
 # are present
 # called from viewnames
-def _checknames():
+def _checknames(phylodump):
     ok=0
     blocks=['metadata','names','externalSources']
     for text in blocks:
@@ -117,10 +113,8 @@ def getnames():
 # returns list of inserted names
 def viewnames():
 #try:
-    # this should definitely not be here, but it is here for now
-    _intializeTreestores()
     phylodump = _get_data_from_url(session.json_dump_url)
-    if _checknames():
+    if _checknames(phylodump):
         inserted_names=_insert_into_database(phylodump)
     #except:
     #    raise HTTP(404)
