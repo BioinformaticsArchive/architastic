@@ -55,7 +55,7 @@ def find():
     submit_uri = domain + '/' + submit_path
 
     u = _get_tnrs_uri(submit_uri, taxa_list)
-    new_id = db.tax_query.insert(url=u)
+    new_id = db.tax_query.insert(url=u,treestore=session.treestore)
 
     # populate database fields from TNRS call
     for name in taxa_list:
