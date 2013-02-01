@@ -53,7 +53,9 @@ def _find_taxalist():
 
     u = _get_tnrs_uri(submit_uri, taxa_list)
 
-    new_tax_query_id = db.tax_query.insert(url=u,treestore=session.treestore)
+    #@TEMP should store the ID of the treestore in the db.treestores
+    new_tax_query_id = db.tax_query.insert(url=u,
+                                           treestore=session.treestore)
 
     # populate database fields from TNRS call
     for name in taxa_list:
@@ -238,11 +240,14 @@ def _find_tree_for_tax_query(tax_query_id):
     return treestore_result_id
       
 #@ TEMP need to get the names from the tree_store to answer this correctly...
-def _is_known_name(name_uri_tuple, source, tree_store_matching_context):
+def _is_known_name(name_uri_tuple, source, treestore_record):
     name, uri = name_uri_tuple
     if ncbi_only:
         return source.upper() in ['NCBI']
-    return True
+    #@ temp we should be checking for matches based on Uris, not names here...
+    t = db.treestore_names
+    m =  db((t.name_of_treestore == treestore_record) & (t.treestore_name == name)).select()
+    return len(m) > 0
 
 ## -------------------- views ----------------------
 
@@ -250,9 +255,11 @@ def _is_known_name(name_uri_tuple, source, tree_store_matching_context):
 # SQLFORM.factory allows you to create nice forms without pointing 
 # to a data model
 def enter():
+    #@TEMP form should be using the db.treestores rather than hardcoding ['opentree','rdf']
+    valid_treestore_names_list = [str(i.shortName) for i in db(db.treestores.shortName != '').select()]
     form = SQLFORM.factory(
         Field('taxalist',requires=IS_NOT_EMPTY()),
-        Field('treestore',requires=IS_IN_SET(['opentree','rdf'])))
+        Field('treestore',requires=IS_IN_SET(valid_treestore_names_list)))
     if form.process().accepted:
         response.flash='input accepted'
         session.taxalist=form.vars.taxalist
@@ -377,8 +384,6 @@ def proxy_tnrs():
         q = db.tax_query[q_id]
     except:
         raise HTTP(404)
-    name_row_list = db(db.name_from_user.tax_query == q).select()
-    
     response.headers['content-type'] = 'json'
     json2return = {}
     populated = False
@@ -441,7 +446,11 @@ def proxy_tnrs():
             time.sleep(sleep_interval)
             sleep_interval *= sleep_interval_increase_factor
 
-    tree_store_matching_context = None #@TEMP dummy placeholder
+    #@TEMP these next 2 lines will become 1 when db.tax_query stores the treestore ID rather than the name
+    name_of_treestore = q.treestore
+    return '"' + name_of_treestore + '"'
+    treestore_db_id = db(db.treestores.name_of_treestore == name_of_treestore).select()[0]
+    treestore_record = db.treestores[treestore_db_id]
     for matchBlob in matchedList:
         all_matches = matchBlob['matches']
         perfect_matches = []
@@ -450,7 +459,7 @@ def proxy_tnrs():
             source = curr_match['sourceId']
             m_n = curr_match['matchedName']
             m_u = curr_match['uri']
-            is_in_tree_store = _is_known_name((m_n, m_u), source, tree_store_matching_context)
+            is_in_tree_store = _is_known_name((m_n, m_u), source, treestore_record)
             is_perfect_match = curr_match['score'].startswith('1')
             curr_match['is_in_tree_store'] = is_in_tree_store
             curr_match['is_perfect_match'] = is_perfect_match
