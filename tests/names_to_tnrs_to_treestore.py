@@ -52,6 +52,7 @@ def proportion_type(string):
         raise ArgumentTypeError(mess)
     return value
 
+
 #use argparse module to parse commandline input
 parser = ArgumentParser(description='attempt to run a full (but basic phylotastic workflow, i.e.\n input names->TNRS->Treestore')
 
@@ -64,6 +65,8 @@ parser.add_argument('-a', '--pass-all-name-matches', action='store_true', defaul
 parser.add_argument('-v', '--verbose', action='store_true', default=False,
         help='print a bunch of crap to stderr about tnrs query, etc')
 
+parser.add_argument('-t', '--treestore', type=str, default=None, 
+                    help='choose a particular treestore to query. (current options = {opentree, rdftreestore}) default opentree')
 '''
 #string
 parser.add_argument('-f', '--patternfile', dest='patternFile', type=str, default=None, 
@@ -97,7 +100,7 @@ SUBMIT_PATH = 'tnrs/submit'
 SUBMIT_URI = DOMAIN + '/' + SUBMIT_PATH
 NAMES_KEY = u'names'
 header_written = False
-USE_RDF = 'RDFTREESTORE' in os.environ
+#USE_RDF = 'RDFTREESTORE' in os.environ
 
 tnrs_start_time = time.time()
 
@@ -125,6 +128,9 @@ def query_treestore(taxon_uid_tuples, treestore_name='http://opentree-dev.bio.ku
 
     returns tree in newick string currently
     '''
+    
+    if not treestore_name or "opentree" in treestore_name:
+        treestore_name = 'http://opentree-dev.bio.ku.edu'
 
     use_uids = False
     if not use_uids:
@@ -159,7 +165,17 @@ def query_treestore(taxon_uid_tuples, treestore_name='http://opentree-dev.bio.ku
         except requests.exceptions.ConnectionError as err:
             sys.exit('\nError connecting to treestore %s!\n%s' % (treestore_name, err)) 
         
-        return resp.text
+        #clean up the output.  Surely a better way to do this.
+        ret_newick = resp.text
+        
+        start_pos = 0
+        end_pos = len(ret_newick) - 1
+        while ret_newick[start_pos] != '(':
+            start_pos += 1
+        while ret_newick[end_pos] != ')':
+            end_pos -= 1
+
+        return ret_newick[start_pos:end_pos + 1]
 
     elif 'rdf' in treestore_name.lower():
         try:
@@ -288,10 +304,15 @@ for sub_tax_dict in all_results:
             if not options.pass_all_name_matches:
                 break
 
+
+tree_string = query_treestore(taxon_tuples, treestore_name=options.treestore)
+
+'''
 if USE_RDF:
     tree_string = query_treestore(taxon_tuples, treestore_name='rdftreestore')
 else:
     tree_string = query_treestore(taxon_tuples)
+'''
 
 out_stream = open(options.output, 'w') if options.output else sys.stdout
 out_stream.write('%s\n' % tree_string.strip())
