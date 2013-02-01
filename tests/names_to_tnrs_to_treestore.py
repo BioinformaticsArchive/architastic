@@ -129,7 +129,7 @@ def query_treestore(taxon_uid_tuples, treestore_name='http://opentree-dev.bio.ku
     returns tree in newick string currently
     '''
     
-    if not treestore_name or treestore_name == 'opentree':
+    if not treestore_name or "opentree" in treestore_name:
         treestore_name = 'http://opentree-dev.bio.ku.edu'
 
     use_uids = False
@@ -165,7 +165,17 @@ def query_treestore(taxon_uid_tuples, treestore_name='http://opentree-dev.bio.ku
         except requests.exceptions.ConnectionError as err:
             sys.exit('\nError connecting to treestore %s!\n%s' % (treestore_name, err)) 
         
-        return resp.text
+        #clean up the output.  Surely a better way to do this.
+        ret_newick = resp.text
+        
+        start_pos = 0
+        end_pos = len(ret_newick) - 1
+        while ret_newick[start_pos] != '(':
+            start_pos += 1
+        while ret_newick[end_pos] != ')':
+            end_pos -= 1
+
+        return ret_newick[start_pos:end_pos + 1]
 
     elif 'rdf' in treestore_name.lower():
         try:
