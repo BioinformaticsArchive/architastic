@@ -88,7 +88,7 @@ def _find_taxalist_opentree(context):
     queryData = "{\"queryString\":\""+names_comma_sep+"\""
 
     if context != None:
-        queryData += ",\"context\":\""+context+"\""
+        queryData += ",\"contextName\":\""+context+"\""
 
     queryData += "}"
 
@@ -109,14 +109,17 @@ def _find_taxalist_opentree(context):
 
     # populate database fields from TNRS call
     for name in taxa_list:
-        matches = name_data_map[name]
-        if len(matches) == 1:
-            db.name_from_user.insert(tax_query=new_tax_query_id,
+        try:
+            matches = name_data_map[name]
+            if len(matches) == 1:
+                db.name_from_user.insert(tax_query=new_tax_query_id,
                                  original_name=name,
                                  tnrs_json=matches[0],
                                  taxon_name=matches[0]["matchedName"],
                                  taxon_uri="",
                                  match_status="")
+        except KeyError:
+            pass
 
     return new_tax_query_id    
 
@@ -278,7 +281,7 @@ def fullqueryopentree():
     session.taxalist = request.post_vars["taxa"]
 
     try:
-        context = request.post_vars["context"]
+        context = request.post_vars["contextName"]
     except:
         context = None
 
@@ -293,7 +296,7 @@ def fullqueryopentree():
     # 4. return the dated tree
 
     # testing
-    tree_result = db(db.treestore_result.id == treestore_result_id).select()[0].tree_result
+    tree_result = db(db.treestore_result.id == treestore_result_id).select()[0].tree_result        
     return dict([("json", tree_result),])
 
 # Contact tree store to get a tree for the non-empty names
