@@ -86,7 +86,6 @@ mail.settings.server = settings.email_server
 mail.settings.sender = settings.email_sender
 mail.settings.login = settings.email_login
 
-
 def define_tables(db, migrate=True):
     # treestores defines the treestores for the controllers
     db.define_table(
