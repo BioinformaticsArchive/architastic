@@ -11,6 +11,15 @@ import os
 #def _get_version_from_treestore
     # get current taxalist version from treestore
 
+def _intializeTreestores():
+    stores = {'opentree':'http://opentreeoflife.org','rdf':'http://phylotastic.org'}
+    for i in stores:
+        treestorename = i
+        url = stores[i]
+        rows = db(db.treestores.name_of_treestore==treestorename).select()
+        if not rows:
+            db.treestores.insert(name_of_treestore=treestorename,url=url)
+    
 # takes a url, expects a json response
 def _get_taxa_from_treestore(url):
     # get JSON from treestore
@@ -55,22 +64,29 @@ def _checknames():
 def _insert_into_database(phylodump):
     inserted_names={};
     datablock = phylodump['metadata']
-    try:
-        if datablock['names']:
-            names=datablock['names']
-            for i in names:
-                name=i['name']
-                identifier=i['treestoreId']
-                rows = db(db.treestore_names.treestore_id==identifier).select()
-                if not rows:
-                    inserted_names[identifier]=name
-                    db.treestore_names.insert(taxon_name=name,treestore_id=identifier)
-    except:
-        raise HTTP(404)
+    names=datablock['names']
+    for i in names:
+        # get the taxon name and the identifier that the treestore
+        # uses for that name
+        name=i['name']
+        identifier=i['treestoreId']
+        treestorename = session.treestore;
+        rows = db(db.treestore_names.taxon_id==identifier).select()
+        if not rows:
+            inserted_names[identifier]=name
+            rows = db(db.treestores.name_of_treestore==treestorename).select()
+            treestore_id = rows[0].id
+            db.treestore_names.insert(
+                name_of_treestore=treestore_id,
+                treestore_name=name,
+                taxon_id=identifier
+                )
     return dict(inserted_names)
 
 def viewnames():
 #try:
+    # this should definitely not be here, but it is here for now
+    _intializeTreestores()
     phylodump = _get_taxa_from_treestore(session.json_dump_url)
     if _checknames():
         inserted_names=_insert_into_database(phylodump)

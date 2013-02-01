@@ -87,18 +87,27 @@ mail.settings.sender = settings.email_sender
 mail.settings.login = settings.email_login
 
 def define_tables(db, migrate=True):
+    # treestores defines the treestores for the controllers
+    db.define_table(
+        'treestores',
+        Field('name_of_treestore','string'), #name
+        Field('url','string'),
+        migrate=migrate
+        )
     # treestore_names defines the entities that the treestore 'knows' about
     # taxon name, source id (NCBI, etc) and the identifier that the treestore
     # wants to use when referring to that name
     db.define_table(
         'treestore_names',
-        Field('taxon_name','string'), # name, might not be unique
-        Field('treestore_id','string',unique=True), # ids for a particular treestore
+        Field('treestore_name','string'), # name used by the treestore, might not be unique
+        Field('taxon_id','string',unique=True), # ids for taxon_name from the treestore
+        Field('name_of_treestore',db.treestores), # name for the treestore itself
         migrate=migrate
         )
     db.define_table(
         'tax_query',
         Field('url', type='string'),
+        Field('treestore',type='string'),
         migrate=migrate
         )
     db.define_table(
@@ -123,7 +132,7 @@ def define_tables(db, migrate=True):
     db.define_table(
         'treestore_result',
         Field('treestore_query_id', db.treestore_query),
-        Field('tree_result', 'string'),
+        Field('tre_result', 'string'),
         migrate=migrate
         )
 define_tables(db)
