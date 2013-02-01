@@ -25,6 +25,8 @@ def _get_conf(request):
 
 def tree():
     t = request.post_vars['taxa']
+
+    return "test"
     if not t:
         raise HTTP(503)
     try:
