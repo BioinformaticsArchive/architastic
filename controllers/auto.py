@@ -24,7 +24,11 @@ def _get_conf(request):
 
 
 def tree():
-#    return "test"
+    ts = request.post_vars['treestore']
+    if ts:
+        treestore = '-t %s' % ts
+    else:
+        treestore = ''
 
     t = request.post_vars['taxa']
     if not t:
@@ -42,10 +46,11 @@ def tree():
     
     f = NamedTemporaryFile(delete=False)
     f.write(t)
-    n = f.name
+    n = f.name + treestore
     f.close()
 
     #exe = '/home/mholder/Documents/projects/phylotastic/architastic/tests/names_to_tnrs_to_treestore.py'
     o = subprocess.check_output([sys.executable, exe, n])
     os.unlink(n)
     return json.dumps(o)
+
