@@ -110,8 +110,8 @@ def find_tree():
 #    use_uids = False
 #    if not use_uids:
         #remove dupe names
-    name_list = set([str(tup[0]) for tup in matched_names])
-    name_string = ','.join(name_list)
+#    name_list = set([str(tup[0]) for tup in matched_names])
+    name_string = ','.join(matched_names)
 #    else:
 #        sys.stderr.write('sorry, can\'t request by uids yet\n')
 #        name_string = ','.join(str(tup[1]) for tup in taxon_uid_tuples)
@@ -128,7 +128,7 @@ def find_tree():
         submit_path = '/db/data/ext/GetJsons/graphdb/subtree'
 
         # build full url for service
-        submit_uri = treestore_name + ':' + str(port) + submit_path
+        submit_uri = "http://opentree-dev.bio.ku.edu" + ':' + str(port) + submit_path
 
         # build headers as dict for requests module
         headers = {'Content-Type':'Application/json'}
@@ -137,11 +137,13 @@ def find_tree():
         data = '{"query":"pt.taxaForSubtree=\\"%s\\""}' % name_string
         
 #        if options.verbose:
-        sys.stderr.write('querying opentree treestore with %d names ...\n' % len(name_list))
+        sys.stderr.write('querying opentree treestore with %d names ...\n' % len(matched_names))
         
         t_result = ""
         try:
-            t_result = requests.post(submit_uri, headers=headers, data=data)
+            resp = requests.post(submit_uri, headers=headers, data=data)
+            t_result = resp.text
+#            t_result = data
         except requests.exceptions.ConnectionError as err:
             sys.exit('\nError connecting to treestore %s!\n%s' % (treestore_name, err)) 
  
@@ -215,7 +217,7 @@ def show_tree():
     except:
         raise HTTP(404)
 
-    return {'treestore_result' : q.treestore_result,
+    return {'tree_result' : q.tree_result,
             'treestore_query_id' : q.treestore_query_id}
 
 class NameMatchingTypeFacets:
