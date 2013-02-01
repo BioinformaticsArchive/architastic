@@ -41,8 +41,8 @@ def enter():
         response.flash='form has errors'
     return dict(form=form)
 
-# creates the URL for the TNRS and calls the TNRS
-def find():
+def find_taxalist():
+
     # session vars come from form in enter()
     raw_taxa_str=session.taxalist
 
@@ -55,42 +55,108 @@ def find():
     submit_uri = domain + '/' + submit_path
 
     u = _get_tnrs_uri(submit_uri, taxa_list)
-    new_id = db.tax_query.insert(url=u)
+    new_tax_query_id = db.tax_query.insert(url=u)
 
     # populate database fields from TNRS call
     for name in taxa_list:
-        db.name_from_user.insert(tax_query=new_id,
+        db.name_from_user.insert(tax_query=new_tax_query_id,
                                  original_name=name,
                                  tnrs_json='',
                                  taxon_name='',
                                  taxon_uri='',
                                  match_status='')
-    return redirect(URL('show', args=(new_id,)))
 
-# Contact tree store to get a tree for the non-empty names
-def find_tree():
+    return new_tax_query_id
+
+# creates the URL for the TNRS and calls the TNRS
+def find():
+
+    return redirect(URL('show', args=(find_taxalist(),)))
+
+def find_taxalist_opentree():
+
+    # session vars come from form in enter()
+    # or can be set manually by other functions before this one is called
+    raw_taxa_str=session.taxalist
+
+    # and then split on commas
+    taxa_list = [i.strip() for i in raw_taxa_str.split(',')]
+
+    domain = "http://opentree-dev.bio.ku.edu:7474"
+    submit_path = "db/data/ext/TNRS/graphdb/doTNRSForNames"
+    submit_uri = domain + '/' + submit_path
+
+    # opentree tnrs provides results directly, not via secondary url
+    # u = _get_tnrs_uri(submit_uri, taxa_list)
+    new_tax_query_id = db.tax_query.insert(url="")
+
+    # prepare request
+    names_comma_sep = ','.join(taxa_list)
+    queryData = "{\"queryString\":\""+names_comma_sep+"\"}"
+
+    # query server and extract results from server response
+    resp = requests.post(submit_uri,
+                        data=queryData,
+                        allow_redirects=True)
+
+    # hack for compatibility with different versions of requests module 
     try:
-        q_id = request.args[-1]
-        q = db.tax_query[q_id]
+        results = resp.json()
     except:
-        raise HTTP(404)
-    name_row_list = db(db.name_from_user.tax_query == q).select()
-    matched_names = []
-    for row in name_row_list:
-        s = str(row.taxon_name)
-        if s:
-            matched_names.append(s)
-    
-    # call script to get tree, would be good to encapsulate this logic here 
-#    tree_result = requests.post(URL(a=request.application,
-#                             c='auto', 
-#                             f='tree.json',
-#                             scheme='http'),
-#                         data={'taxa' : '\n'.join(matched_names)}
-#                        ).text
+        results = resp.json
+
+    name_data_map = dict()
+    for name_result in results["results"]:
+        name_data_map[name_result["queried_name"]] = name_result["matches"]
+
+    # populate database fields from TNRS call
+    for name in taxa_list:
+        matches = name_data_map[name]
+        if len(matches) == 1:
+            db.name_from_user.insert(tax_query=new_tax_query_id,
+                                 original_name=name,
+                                 tnrs_json=matches[0],
+                                 taxon_name=matches[0]["matchedName"],
+                                 taxon_uri="",
+                                 match_status="")
+
+    return new_tax_query_id    
+
+def fullqueryopentree():
+
+    # a basic query that will:
+    #     1. hit the opentree tnrs to match a set of names
+    #     2. get a tree for all perfectly matched names
+    #     3. run the tree through datelife
+    #     4. return a dated tree
+
+    # have to figure out how to set the list of taxa
+    session.taxalist = "Malus, Carex, Rosa, Aster"
+
+    # 1. hit the tnrs for the names
+    tax_query_id = find_taxalist_opentree()
+
+    # 2. query the opentree treestore for a tree with the matched names
+    treestore_result_id = find_tree_for_tax_query(tax_query_id)
+
+    # 3. run the tree through datelife?
+
+    # 4. return the dated tree
+
+
+    # testing
+    tree_result = db(db.treestore_result.id == treestore_result_id).select()[0].tree_result
+    return dict([("json", tree_result),])
+
+def query_datelife_for_treestore_result(treestore_result_id):
+
+    datelife_url = ""
+
+
+def find_tree_for_tax_query(tax_query_id):
 
 # ---------------------------------------------------------------
-#  query_treestore function from derrick's script
+#  based on query_treestore function from derrick's script
 
     '''DJZ
     Query a treestore, making some strict assumptions about what formats they accept
@@ -107,14 +173,17 @@ def find_tree():
     returns tree in newick string currently
     '''
 
-#    use_uids = False
-#    if not use_uids:
-        #remove dupe names
-#    name_list = set([str(tup[0]) for tup in matched_names])
+    ### NOTE: WE SHOULD BE USING UIDS, NOT NAMES!!!
+    ### (we aren't using uids because we don't have them yet)
+
+    name_row_list = db(db.name_from_user.tax_query == tax_query_id).select()
+    matched_names = []
+    for row in name_row_list:
+        s = str(row.taxon_name)
+        if s:
+            matched_names.append(s)
+
     name_string = ','.join(matched_names)
-#    else:
-#        sys.stderr.write('sorry, can\'t request by uids yet\n')
-#        name_string = ','.join(str(tup[1]) for tup in taxon_uid_tuples)
 
     # defaulting to opentree for now
     treestore_name = "opentree"
@@ -137,27 +206,26 @@ def find_tree():
         data = '{"query":"pt.taxaForSubtree=\\"%s\\""}' % name_string
         
 #        if options.verbose:
-        sys.stderr.write('querying opentree treestore with %d names ...\n' % len(matched_names))
+#        sys.stderr.write('querying opentree treestore with %d names ...\n' % len(matched_names))
         
         t_result = ""
         try:
             resp = requests.post(submit_uri, headers=headers, data=data)
             t_result = resp.text
-#            t_result = data
         except requests.exceptions.ConnectionError as err:
             sys.exit('\nError connecting to treestore %s!\n%s' % (treestore_name, err)) 
- 
-#        return resp.text
 
+    # BEGIN UNEDITED SECTION ------------------------------------------------------------------
     elif 'rdf' in treestore_name.lower():
 
-        #### NONE OF THIS HAS BEEN MODIFIED FROM THE ORIGINAL!
+        #### NONE OF THE RDF TREESTORE SECTION HAS BEEN MODIFIED FROM THE ORIGINAL.
         #### IT WILL PROBABLY BREAK.
 
         try:
             import treestore
         except ImportError:
-            sys.exit('You must install the "treestore" package to interface with an RDF treestore.\n Get it from https://github.com/phylotastic/rdf-treestore.')
+            sys.exit("You must install the \"treestore\" package to interface with an RDF treestore.\n " \
+                         "Get it from https://github.com/phylotastic/rdf-treestore.")
 
         #instantiate a treestore object, which will look for an attached 
         rdf_treestore = treestore.Treestore()
@@ -180,7 +248,7 @@ def find_tree():
     else:
         sys.exit('I don\'t know how to contact treestore %s yet' % treestore_name)
 
-# ------------------------------------------------------------------
+    # END UNEDITED SECTION ------------------------------------------------------------------
 
     # populate database fields for this treestore call
     treestore_query_id = db.treestore_query.insert(service_url=submit_uri,
@@ -191,6 +259,17 @@ def find_tree():
     treestore_result_id = db.treestore_result.insert(treestore_query_id=treestore_query_id,
                             tree_result=t_result)
 
+    return treestore_result_id
+
+# Contact tree store to get a tree for the non-empty names
+def find_tree():
+    try:
+        q_id = request.args[-1]
+        q = db.tax_query[q_id]
+    except:
+        raise HTTP(404)
+
+    treestore_result_id = find_tree_for_tax_query(q)
     return redirect(URL('show_tree', args=(treestore_result_id,)))
 
 # Shows results from TNRS call
