@@ -127,7 +127,7 @@ def define_tables(db, migrate=True):
         Field('headers', 'string'), # headers stored as JSON to be parsed into a dict for the requests module
         Field('query_data', 'string'), # the cql query, wrapped in whatever formatting is required by the treestore
         Field('treestore_name', 'string'), # just the name of the treestore for labeling purposes
-        migrate=migrate,
+        migrate=migrate
         )
     db.define_table(
         'treestore_result',
