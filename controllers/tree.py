@@ -256,9 +256,10 @@ def _is_known_name(name_uri_tuple, source, treestore_record):
 # to a data model
 def enter():
     #@TEMP form should be using the db.treestores rather than hardcoding ['opentree','rdf']
+    valid_treestore_names_list = [str(i.shortName) for i in db(db.treestores.shortName != '').select()]
     form = SQLFORM.factory(
         Field('taxalist',requires=IS_NOT_EMPTY()),
-        Field('treestore',requires=IS_IN_SET(['opentree','rdf'])))
+        Field('treestore',requires=IS_IN_SET(valid_treestore_names_list)))
     if form.process().accepted:
         response.flash='input accepted'
         session.taxalist=form.vars.taxalist
