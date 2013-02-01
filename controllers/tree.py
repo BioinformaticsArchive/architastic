@@ -345,7 +345,7 @@ def show_tree():
     return {'tree_result' : q.tree_result,
             'treestore_query_id' : q.treestore_query_id}
 
-force_repopulate_from_json = True # debugging
+force_repopulate_from_json = False # debugging
 ncbi_only = False
 
 def fix_name():
