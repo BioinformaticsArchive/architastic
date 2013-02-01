@@ -4,3 +4,5 @@ sessions
 databases
 cache/cache.lock
 cache/cache.shelve
+*~
+#*#
