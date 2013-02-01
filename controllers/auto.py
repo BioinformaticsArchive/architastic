@@ -25,6 +25,7 @@ def _get_conf(request):
 
 def tree():
     ts = request.post_vars['treestore']
+
     if ts:
         treestore = '-t %s' % ts
     else:
@@ -51,7 +52,11 @@ def tree():
     f.close()
 
     #exe = '/home/mholder/Documents/projects/phylotastic/architastic/tests/names_to_tnrs_to_treestore.py'
-    o = subprocess.check_output([sys.executable, exe, n, treestore])
+    if treestore:
+        o = subprocess.check_output([sys.executable, exe, n, treestore])
+    else:
+        o = subprocess.check_output([sys.executable, exe, n])
+
     os.unlink(n)
     return json.dumps(o)
 
