@@ -47,7 +47,7 @@ def _insert_into_database(phylodump):
         rows = db(db.treestore_names.taxon_id==identifier).select()
         if not rows:
             inserted_names[identifier]=name
-            rows = db(db.treestores.name_of_treestore==treestorename).select()
+            rows = db(db.treestores.shortName==treestorename).select()
             treestore_id = rows[0].id
             db.treestore_names.insert(
                 name_of_treestore=treestore_id,
