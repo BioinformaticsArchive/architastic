@@ -3,6 +3,16 @@ import json
 import time
 import sys
 
+class NameMatchingTypeFacets:
+    PERFECT_AMBIGUOUS = 'multiple perfect matches'
+    IMPERFECT_AMBIGUOUS = 'imperfect match and there are multiple matches'
+    UNRECOGNIZED = 'not recognized by TNRS'
+    NOT_IN_STORE = 'recognized by TNRS but not in tree store'
+    USER = 'user matched'
+    ONLY_PERFECT_IN_STORE = 'only perfect match in tree store'
+    ONLY_MATCH_IN_STORE = 'imperfect but only match in tree store'
+    UNCHECKED = ''
+
 def _debug(s):
     sys.stderr.write(s)
     sys.stderr.write('\n')
@@ -25,23 +35,10 @@ def _get_tnrs_uri(submit_uri, name_list):
     else:
         raise HTTP(503) # not sure if there is a better status code to return here...
 
-# form for entering taxa list
-# SQLFORM.factory allows you to create nice forms without pointing 
-# to a data model
-def enter():
-    form = SQLFORM.factory(
-        Field('taxalist',requires=IS_NOT_EMPTY()),
-        Field('treestore',requires=IS_IN_SET(['opentree','rdf'])))
-    if form.process().accepted:
-        response.flash='input accepted'
-        session.taxalist=form.vars.taxalist
-        session.treestore=form.vars.treestore
-        redirect(URL('find'))
-    elif form.errors:
-        response.flash='form has errors'
-    return dict(form=form)
 
-def find_taxalist():
+
+# creates the URL for the TNRS and calls the TNRS
+def _find_taxalist():
 
     # session vars come from form in enter()
     raw_taxa_str=session.taxalist
@@ -55,11 +52,8 @@ def find_taxalist():
     submit_uri = domain + '/' + submit_path
 
     u = _get_tnrs_uri(submit_uri, taxa_list)
-<<<<<<< HEAD
-    new_tax_query_id = db.tax_query.insert(url=u)
-=======
-    new_id = db.tax_query.insert(url=u,treestore=session.treestore)
->>>>>>> 1958c25fc80ed64a9248e61a5855ed1cd8829890
+
+    new_tax_query_id = db.tax_query.insert(url=u,treestore=session.treestore)
 
     # populate database fields from TNRS call
     for name in taxa_list:
@@ -72,12 +66,7 @@ def find_taxalist():
 
     return new_tax_query_id
 
-# creates the URL for the TNRS and calls the TNRS
-def find():
-
-    return redirect(URL('show', args=(find_taxalist(),)))
-
-def find_taxalist_opentree():
+def _find_taxalist_opentree():
 
     # session vars come from form in enter()
     # or can be set manually by other functions before this one is called
@@ -126,38 +115,13 @@ def find_taxalist_opentree():
 
     return new_tax_query_id    
 
-def fullqueryopentree():
 
-    # a basic query that will:
-    #     1. hit the opentree tnrs to match a set of names
-    #     2. get a tree for all perfectly matched names
-    #     3. run the tree through datelife
-    #     4. return a dated tree
-
-    # have to figure out how to set the list of taxa
-    session.taxalist = "Malus, Carex, Rosa, Aster"
-
-    # 1. hit the tnrs for the names
-    tax_query_id = find_taxalist_opentree()
-
-    # 2. query the opentree treestore for a tree with the matched names
-    treestore_result_id = find_tree_for_tax_query(tax_query_id)
-
-    # 3. run the tree through datelife?
-
-    # 4. return the dated tree
-
-
-    # testing
-    tree_result = db(db.treestore_result.id == treestore_result_id).select()[0].tree_result
-    return dict([("json", tree_result),])
-
-def query_datelife_for_treestore_result(treestore_result_id):
+def _query_datelife_for_treestore_result(treestore_result_id):
 
     datelife_url = ""
 
 
-def find_tree_for_tax_query(tax_query_id):
+def _find_tree_for_tax_query(tax_query_id):
 
 # ---------------------------------------------------------------
 #  based on query_treestore function from derrick's script
@@ -264,6 +228,62 @@ def find_tree_for_tax_query(tax_query_id):
                             tree_result=t_result)
 
     return treestore_result_id
+      
+#@ TEMP need to get the names from the tree_store to answer this correctly...
+def _is_known_name(name_uri_tuple, source, tree_store_matching_context):
+    name, uri = name_uri_tuple
+    if ncbi_only:
+        return source.upper() in ['NCBI']
+    return True
+
+## -------------------- views ----------------------
+
+# form for entering taxa list
+# SQLFORM.factory allows you to create nice forms without pointing 
+# to a data model
+def enter():
+    form = SQLFORM.factory(
+        Field('taxalist',requires=IS_NOT_EMPTY()),
+        Field('treestore',requires=IS_IN_SET(['opentree','rdf'])))
+    if form.process().accepted:
+        response.flash='input accepted'
+        session.taxalist=form.vars.taxalist
+        session.treestore=form.vars.treestore
+        redirect(URL('find'))
+    elif form.errors:
+        response.flash='form has errors'
+    return dict(form=form)
+
+def find():
+
+    return redirect(URL('show', args=(_find_taxalist(),)))
+
+def fullqueryopentree():
+
+    # a basic automated query that will:
+    #     1. hit the opentree tnrs to match a set of names
+    #     2. get a tree for all perfectly matched names
+    #     3. run the tree through datelife
+    #     4. return a dated tree
+    #
+    # author: hinchliff
+
+    # have to figure out how to set the list of taxa
+    session.taxalist = "Malus, Carex, Rosa, Aster"
+
+    # 1. hit the tnrs for the names
+    tax_query_id = _find_taxalist_opentree()
+
+    # 2. query the opentree treestore for a tree with the matched names
+    treestore_result_id = _find_tree_for_tax_query(tax_query_id)
+
+    # 3. run the tree through datelife?
+
+    # 4. return the dated tree
+
+    # testing
+    tree_result = db(db.treestore_result.id == treestore_result_id).select()[0].tree_result
+    return dict([("json", tree_result),])
 
 # Contact tree store to get a tree for the non-empty names
 def find_tree():
@@ -273,7 +293,7 @@ def find_tree():
     except:
         raise HTTP(404)
 
-    treestore_result_id = find_tree_for_tax_query(q)
+    treestore_result_id = _find_tree_for_tax_query(q)
     return redirect(URL('show_tree', args=(treestore_result_id,)))
 
 # Shows results from TNRS call
@@ -293,6 +313,7 @@ def show():
                                        #       multiple times...)
             }
 
+# shows results from a treestore query (i.e. a tree)
 def show_tree():
     try:
         q_id = request.args[-1]
@@ -303,25 +324,8 @@ def show_tree():
     return {'tree_result' : q.tree_result,
             'treestore_query_id' : q.treestore_query_id}
 
-class NameMatchingTypeFacets:
-    PERFECT_AMBIGUOUS = 'multiple perfect matches'
-    IMPERFECT_AMBIGUOUS = 'imperfect match and there are multiple matches'
-    UNRECOGNIZED = 'not recognized by TNRS'
-    NOT_IN_STORE = 'recognized by TNRS but not in tree store'
-    USER = 'user matched'
-    ONLY_PERFECT_IN_STORE = 'only perfect match in tree store'
-    ONLY_MATCH_IN_STORE = 'imperfect but only match in tree store'
-    UNCHECKED = ''
-
 force_repopulate_from_json = False # debugging
 ncbi_only = False
-      
-#@ TEMP need to get the names from the tree_store to answer this correctly...
-def _is_known_name(name_uri_tuple, source, tree_store_matching_context):
-    name, uri = name_uri_tuple
-    if ncbi_only:
-        return source.upper() in ['NCBI']
-    return True
 
 def fix_name():
     try:

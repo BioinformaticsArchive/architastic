@@ -100,7 +100,7 @@ def define_tables(db, migrate=True):
     db.define_table(
         'treestore_names',
         Field('treestore_name','string'), # name used by the treestore, might not be unique
-        Field('taxon_id','string',unique=True), # ids for taxon_name from the treestore
+        Field('taxon_id','string'), # ids for taxon_name from the treestore
         Field('name_of_treestore',db.treestores), # name for the treestore itself
         migrate=migrate
         )
@@ -132,7 +132,7 @@ def define_tables(db, migrate=True):
     db.define_table(
         'treestore_result',
         Field('treestore_query_id', db.treestore_query),
-        Field('tre_result', 'string'),
+        Field('tree_result', 'string'),
         migrate=migrate
         )
 define_tables(db)
