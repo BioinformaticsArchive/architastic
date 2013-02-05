@@ -36,7 +36,7 @@ def _checknames(phylodump):
 # TODO: possible that name might change when identifer doesn't?
 # called from viewnames
 def _insert_into_database(phylodump):
-    inserted_names={};
+    name_results={'existing':'','inserted':''};
     names=phylodump['names']
     for i in names:
         # get the taxon name and the identifier that the treestore
@@ -46,15 +46,19 @@ def _insert_into_database(phylodump):
         treestorename = session.treestore;
         rows = db(db.treestore_names.taxon_id==identifier).select()
         if not rows:
+            name_results['inserted'][identifier]=name
+            rows = db(db.treestores.shortNamename==treestorename).select()
             inserted_names[identifier]=name
-            rows = db(db.treestores.name_of_treestore==treestorename).select()
+            rows = db(db.treestores.shortName==treestorename).select()
             treestore_id = rows[0].id
             db.treestore_names.insert(
                 name_of_treestore=treestore_id,
                 treestore_name=name,
                 taxon_id=identifier
                 )
-    return dict(inserted_names)
+        else:
+            name_results['existing'][identifier]=name
+    return dict(name_results)
 
 def _add_treestore():
     treestore_data = _get_data_from_url(session.treestore_metadata)
@@ -115,7 +119,7 @@ def viewnames():
 #try:
     phylodump = _get_data_from_url(session.json_dump_url)
     if _checknames(phylodump):
-        inserted_names=_insert_into_database(phylodump)
+        name_results=_insert_into_database(phylodump)
     #except:
     #    raise HTTP(404)
     return locals()

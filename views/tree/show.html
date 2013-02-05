@@ -13,6 +13,7 @@
 	      TD(DIV(name.tnrs_json, _class='tnrsJsonBlurb'),
 	         DIV(name.taxon_name, _class='tnrsTaxonName'),
 	         DIV(name.taxon_uri, _class='tnrsTaxonUri'),
+	         DIV(_class='uneditableUnknownTaxon'),
 	         SELECT(_class='tnrsNameChooser')),
 	      _origname=name.original_name,
 	      _class='tnrsNameRow',
@@ -86,10 +87,13 @@ $(document).ready(function(){
 								}
 							}
 						}
-						if (knownNames.length != 1) {
+						if (knownNames.length > 1) {
 							$('<option />', {value : '["",""]', 
-								             text : 'UNMATCHED'}).appendTo(dropDownMenu);
-						
+								             text : 'UNMATCHED (ambiguous)'}).appendTo(dropDownMenu);
+						}
+						else if (knownNames.length == 0) {
+							$('<option />', {value : '["",""]', 
+								             text : 'UNKNOWN'}).appendTo(dropDownMenu);
 						}
 						for (var mci=0; mci < knownNames.length; mci++) {
 							var mo = knownNames[mci];
@@ -102,6 +106,10 @@ $(document).ready(function(){
 						nameCell.hide();
 						uriCell.hide();
 						dropDownMenu.show();
+						if (knownNames.length == 0) {
+							dropDownMenu.prev().text('UNKNOWN');
+							dropDownMenu.hide();
+						}
 					});
 				}
 				$('.tnrsNameChooser').on('change', function(e){
