@@ -24,19 +24,11 @@ def _get_conf(request):
 
 
 def tree():
-    ts = request.post_vars['treestore']
-
-    if ts:
-        treestore = '-t %s' % ts
-    else:
-        treestore = ''
-
-    t = request.post_vars['taxa']
-    if not t:
-        raise HTTP(503)
+    args_to_pass = [sys.executable]
     try:
         try:
             exe = _get_conf(request).get("external", "cmdline")
+            args_to_pass.append(exe)
         except:
             _LOG.warn("Config does not have external/cmdline setting")
             raise
@@ -44,18 +36,32 @@ def tree():
     except:
         sys.stderr.write("WARNING: Could not find the names_to_tnrs_to_treestore executable")
         raise HTTP(501, T("Server is not configured to allow names_to_tnrs_to_treestore conversion"))
-    
+     
+    ts = request.post_vars['treestore']
+    if ts:
+        args_to_pass.append('-t %s' % ts)
+
+    st = request.post_vars['notnrs']
+    if st:
+        args_to_pass.append('--no-tnrs')
+        
+    t = request.post_vars['taxa']
+    if not t:
+        raise HTTP(503)
+   
     f = NamedTemporaryFile(delete=False)
     f.write(t)
-    #n = f.name + treestore
     n = f.name
     f.close()
-
-    #exe = '/home/mholder/Documents/projects/phylotastic/architastic/tests/names_to_tnrs_to_treestore.py'
+    args_to_pass.append(n)
+    
+    o = subprocess.check_output(args_to_pass)
+    '''
     if treestore:
         o = subprocess.check_output([sys.executable, exe, n, treestore])
     else:
         o = subprocess.check_output([sys.executable, exe, n])
+    '''
 
     os.unlink(n)
     return json.dumps(o)
