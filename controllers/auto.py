@@ -36,15 +36,18 @@ def tree():
     except:
         sys.stderr.write("WARNING: Could not find the names_to_tnrs_to_treestore executable")
         raise HTTP(501, T("Server is not configured to allow names_to_tnrs_to_treestore conversion"))
-     
-    ts = request.post_vars['treestore']
-    if ts:
-        args_to_pass.append('-t %s' % ts)
+   
+    #these are the arguments that can currently be passed on to the script
+    arg_translate = {'treestore':lambda s: '-t %s' % s, 
+                    'notnrs':lambda _: '--no-tnrs',
+                    'minmatchscore':lambda s: '-m %s' % s}
 
-    st = request.post_vars['notnrs']
-    if st:
-        args_to_pass.append('--no-tnrs')
-        
+    for arg in arg_translate.iterkeys():
+        val = request.post_vars[arg]
+        if val:
+            args_to_pass.append(arg_translate[arg](val))
+
+    #get the actual taxon list
     t = request.post_vars['taxa']
     if not t:
         raise HTTP(503)
@@ -56,13 +59,6 @@ def tree():
     args_to_pass.append(n)
     
     o = subprocess.check_output(args_to_pass)
-    '''
-    if treestore:
-        o = subprocess.check_output([sys.executable, exe, n, treestore])
-    else:
-        o = subprocess.check_output([sys.executable, exe, n])
-    '''
-
     os.unlink(n)
     return json.dumps(o)
 

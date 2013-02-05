@@ -5,7 +5,7 @@ Mark Holder and Derrick Zwickl
 Example of a client that:
     1. Takes a list of input taxon names
     2. Sends them to a TNRS following the demo of the TNRS API described at:
-        http://www.evoio.org/wiki/Phylotastic/TNRS
+        http://www.evoio.org/wiki/Phylotastic/TNRS (optional)
     3. Queries a treestore to obtain a pruned subtree corresponding to those
         taxa
 
@@ -14,7 +14,16 @@ Example of a client that:
     names passed in as command-line arguments (or reads name from standard 
     input if no arguments are given).
 
-2. 
+2. Sends intput names to iPlant TNRS, selects from matches based on match score
+    as defined by that TNRS (this entire step can be skipped if names are already 
+    assumed to be clean). 
+
+3. Sends taxon names on to a treestore.  Currently the hard coded options are 
+    the opentree treestore and an rdftreestore.  These both currently return
+    a pruned tree for the specified taxa.  However, opentree with do this from
+    its large graph that includes taxonomy information across the ToL, while
+    the rdf treestore will choose a single tree stored in it that contains the 
+    largest number of passed taxa, and prune that.
 
 Passes 
 
@@ -40,6 +49,7 @@ import time
 import datetime
 import re
 import string
+import json
 from argparse import ArgumentParser
 
 #this is for used for type checking as a type= argument in argparse.add_argument
@@ -56,36 +66,23 @@ def proportion_type(string):
 #use argparse module to parse commandline input
 parser = ArgumentParser(description='attempt to run a full (but basic phylotastic workflow, i.e.\n input names->TNRS->Treestore')
 
-parser.add_argument('-m', '--min-match-score', type=proportion_type, default=0.5,
+tnrs_group = parser.add_argument_group('TNRS', 'Options relating to Taxonomic Name Resolution Service query')
+
+tnrs_group.add_argument('--no-tnrs', action='store_true', default=False,
+                    help='send the names straight to the treestore without cleaning by the TNRS (default False)')
+
+tnrs_group.add_argument('-m', '--min-match-score', type=proportion_type, default=None,
                     help='minimum score of TNRS match to pass name onto treestore (default 0.5)')
 
-parser.add_argument('-a', '--pass-all-name-matches', action='store_true', default=False,
-                    help='for a given query name, pass all TNRS matches of >= than min-match-score\n\tdefault: only pass best')
+tnrs_group.add_argument('-a', '--pass-all-name-matches', action='store_true', default=False,
+                    help='for a given query name, pass all TNRS matches of >= than min-match-score\n\t(default: only pass best)')
 
 parser.add_argument('-v', '--verbose', action='store_true', default=False,
                     help='print a bunch of crap to stderr about tnrs query, etc')
 
-parser.add_argument('--no-tnrs', action='store_true', default=False,
-                    help='send the names straight to the treestore without cleaning')
-
 parser.add_argument('-t', '--treestore', type=str, default=None, 
                     help='choose a particular treestore to query. (current options = {opentree, rdftreestore}) default opentree')
-'''
-#string
-parser.add_argument('-f', '--patternfile', dest='patternFile', type=str, default=None, 
-                    help='file from which to read patterns (you must still pass a pattern on the command line, which is ignored)')
 
-#multiple arguments
-parser.add_argument('--range', dest='baseRange', nargs=2, type=int, default=[1, 9999999], metavar=('startbase', 'endbase'),
-                    help='range of cluster sizes (number of members)')
-
-#single number value
-parser.add_argument('-mp', '--min-match-prop', dest='minMatchProportion', type=proportion_type, default=0.0,
-                    help='proportion of hit that must overlap query (default 0.0)')
-
-#variable number of arguments
-
-'''
 parser.add_argument('filenames', nargs="*", default=None, 
                     help='a list of filenames to read for comma or newline delimited taxon names\n\tnone for stdin')
 
@@ -94,6 +91,9 @@ parser.add_argument('-o', '--output', type=str, default=None,
 
 #now process the command line
 options = parser.parse_args()
+
+if options.no_tnrs and (options.min_match_score or options.pass_all_name_matches):
+    sys.exit('Don\'t pass --min-match-score or --pass-all-name-matches with --no-tnrs')
 
 sleep_interval = 1.0
 sleep_interval_increase_factor = 1.5
@@ -318,8 +318,15 @@ if len(taxon_tuples) < 2:
 
 tree_string = query_treestore(taxon_tuples, treestore_name=options.treestore)
 
-out_stream = open(options.output, 'w') if options.output else sys.stdout
-out_stream.write('%s\n' % tree_string.strip())
+if options.output:
+    out_stream = open(options.output, 'w')
+    out_stream.write('%s' % tree_string.strip())
+else:
+    if sys.stdout.isatty():
+        sys.stdout.write('%s\n' % tree_string.strip())
+    else:
+        sys.stdout.write('%s\n' % tree_string.strip())
+#out_stream.write('%s\n' % json.dumps(tree_string.strip()))
 
 treestore_end_time = time.time()
 if options.no_tnrs:
