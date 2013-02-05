@@ -60,10 +60,13 @@ parser.add_argument('-m', '--min-match-score', type=proportion_type, default=0.5
                     help='minimum score of TNRS match to pass name onto treestore (default 0.5)')
 
 parser.add_argument('-a', '--pass-all-name-matches', action='store_true', default=False,
-        help='for a given query name, pass all TNRS matches of >= than min-match-score\n\tdefault: only pass best')
+                    help='for a given query name, pass all TNRS matches of >= than min-match-score\n\tdefault: only pass best')
 
 parser.add_argument('-v', '--verbose', action='store_true', default=False,
-        help='print a bunch of crap to stderr about tnrs query, etc')
+                    help='print a bunch of crap to stderr about tnrs query, etc')
+
+parser.add_argument('--no-tnrs', action='store_true', default=False,
+                    help='send the names straight to the treestore without cleaning')
 
 parser.add_argument('-t', '--treestore', type=str, default=None, 
                     help='choose a particular treestore to query. (current options = {opentree, rdftreestore}) default opentree')
@@ -167,12 +170,15 @@ def query_treestore(taxon_uid_tuples, treestore_name='http://opentree-dev.bio.ku
         
         #clean up the output.  Surely a better way to do this.
         ret_newick = resp.text
-        
+       
+        if not ret_newick:
+            sys.exit('\ndNo appropriate tree found in treestore %s!\n' % (treestore_name, err)) 
+
         start_pos = 0
         end_pos = len(ret_newick) - 1
-        while ret_newick[start_pos] != '(':
+        while ret_newick[start_pos] != '(' and start_pos < end_pos:
             start_pos += 1
-        while ret_newick[end_pos] != ')':
+        while ret_newick[end_pos] != ')' and end_pos > 0:
             end_pos -= 1
 
         return ret_newick[start_pos:end_pos + 1]
@@ -213,9 +219,8 @@ def write_resolved_names(submitted_name_list, names_response, outp):
     global header_written
     col_fields = [u'submittedName', u'acceptedName', u'matchedName', u'score', u'sourceId', u'uri']
     output_names = ['Submitted', 'Accepted', 'Matched', 'Score', 'Source', 'URI']
-    fieldDict = dict((out, field) for out, field in zip(output_names, col_fields))
     if not header_written:
-        outp.write('%s\n' % ''.join('%30s' % f for f in output_names))
+        outp.write('%s\n' % ''.join('%25s' % f for f in output_names))
         header_written = True
     by_sub_name = {}
     for match in names_response:
@@ -237,7 +242,8 @@ def write_resolved_names(submitted_name_list, names_response, outp):
     return matches    
 
 #MTH & DJZ
-all_results = []
+all_tnrs_results = []
+all_query_names = []
 
 for inp_stream in inp_stream_list:
     #first split on newlines
@@ -247,79 +253,81 @@ for inp_stream in inp_stream_list:
     for n in name_list:
         split_list.extend(n.split(','))
     name_list = [ tax.strip() for tax in split_list ]
+    all_query_names.extend(name_list)
 
-    batch_size = 10
-    curr_ind = 0
-    while curr_ind < len(name_list): 
-        end_ind = curr_ind + batch_size
-        if end_ind > len(name_list):
-            end_ind = len(name_list)
-        this_batch = name_list[curr_ind:end_ind]
-        names_newline_sep = '\n'.join(this_batch)
-        resp = requests.get(SUBMIT_URI,
-                            params={'query':names_newline_sep},
-                            allow_redirects=True)
-        if options.verbose:
-            sys.stderr.write('Sent GET to %s\n' %(resp.url))
-        resp.raise_for_status()
-        results = resp.json()
-        retrieve_uri = results.get(u'uri')
-        if retrieve_uri:
+    if not options.no_tnrs:
+        batch_size = 10
+        curr_ind = 0
+        while curr_ind < len(name_list): 
+            end_ind = curr_ind + batch_size
+            if end_ind > len(name_list):
+                end_ind = len(name_list)
+            this_batch = name_list[curr_ind:end_ind]
+            names_newline_sep = '\n'.join(this_batch)
+            resp = requests.get(SUBMIT_URI,
+                                params={'query':names_newline_sep},
+                                allow_redirects=True)
             if options.verbose:
-                sys.stderr.write('Retrieving names from %s\n' % (retrieve_uri))
-        elif len(resp.history) > 0:
-            retrieve_uri = resp.url
-        else:
-            sys.exit('Did not get a URI or redirect from the submit GET operation. Got:\n %s\n' % str(results))
-        min_time = time.time()
-        sleep_interval = 1.0
-        while retrieve_uri:
-            retrieve_response = requests.get(retrieve_uri)
-            retrieve_response.raise_for_status()
-            retrieve_results = retrieve_response.json()
-            if NAMES_KEY in retrieve_results:
-                break
+                sys.stderr.write('Sent GET to %s\n' %(resp.url))
+            resp.raise_for_status()
+            results = resp.json()
+            retrieve_uri = results.get(u'uri')
+            if retrieve_uri:
+                if options.verbose:
+                    sys.stderr.write('Retrieving names from %s\n' % (retrieve_uri))
+            elif len(resp.history) > 0:
+                retrieve_uri = resp.url
+            else:
+                sys.exit('Did not get a URI or redirect from the submit GET operation. Got:\n %s\n' % str(results))
             min_time = time.time()
+            sleep_interval = 1.0
+            while retrieve_uri:
+                retrieve_response = requests.get(retrieve_uri)
+                retrieve_response.raise_for_status()
+                retrieve_results = retrieve_response.json()
+                if NAMES_KEY in retrieve_results:
+                    break
+                min_time = time.time()
+                if options.verbose:
+                    sys.stderr.write('Waiting (%f sec) for processing by tnrs.\n' % sleep_interval)
+                time.sleep(sleep_interval)
+                sleep_interval *= sleep_interval_increase_factor
+            
             if options.verbose:
-                sys.stderr.write('Waiting (%f sec) for processing by tnrs.\n' % sleep_interval)
-            time.sleep(sleep_interval)
-            sleep_interval *= sleep_interval_increase_factor
+                write_resolved_names(this_batch, retrieve_results[NAMES_KEY], sys.stderr)
+            curr_ind += batch_size
         
-        if options.verbose:
-            write_resolved_names(this_batch, retrieve_results[NAMES_KEY], sys.stderr)
-        curr_ind += batch_size
-    
-        all_results.extend(retrieve_results[NAMES_KEY])
-    
-    tnrs_end_time = time.time()
+            all_tnrs_results.extend(retrieve_results[NAMES_KEY])
+        
+        tnrs_end_time = time.time()
 
-#DJZ
+        taxon_tuples = []
+        for sub_tax_dict in all_tnrs_results:
+            for single_match_dict in sorted(sub_tax_dict[u'matches'], reverse=True, key=lambda m: m['score']):
+                if float(single_match_dict['score']) >= options.min_match_score:
+                    taxon_tuples.append((single_match_dict[u'matchedName'], single_match_dict[u'uri']))
+                    if not options.pass_all_name_matches:
+                        break
+    else:
+        taxon_tuples = [ (n, None) for n in all_query_names ]
+
 treestore_start_time = time.time()
 
-taxon_tuples = []
-for sub_tax_dict in all_results:
-    for single_match_dict in sorted(sub_tax_dict[u'matches'], reverse=True, key=lambda m: m['score']):
-        if float(single_match_dict['score']) >= options.min_match_score:
-            taxon_tuples.append((single_match_dict[u'matchedName'], single_match_dict[u'uri']))
-            if not options.pass_all_name_matches:
-                break
-
+if len(taxon_tuples) < 2:
+    sys.exit('Need at least 2 names to pass to treestore!  Try using the TNRS if you didn\'t')
 
 tree_string = query_treestore(taxon_tuples, treestore_name=options.treestore)
-
-'''
-if USE_RDF:
-    tree_string = query_treestore(taxon_tuples, treestore_name='rdftreestore')
-else:
-    tree_string = query_treestore(taxon_tuples)
-'''
 
 out_stream = open(options.output, 'w') if options.output else sys.stdout
 out_stream.write('%s\n' % tree_string.strip())
 
 treestore_end_time = time.time()
-tnrs_time = datetime.timedelta(seconds=(tnrs_end_time - tnrs_start_time))
+if options.no_tnrs:
+    tnrs_time = 0.0
+else:
+    tnrs_time = datetime.timedelta(seconds=(tnrs_end_time - tnrs_start_time))
 treestore_time = datetime.timedelta(seconds=(treestore_end_time - treestore_start_time))
-sys.stderr.write('%s %s\n' % (string.rjust('tnrs time', 15), string.rjust(str(tnrs_time), 15)))
-sys.stderr.write('%s %s\n' % (string.rjust('treestore time', 15), string.rjust(str(treestore_time), 15)))
+if options.verbose:
+    sys.stderr.write('%s %s\n' % (string.rjust('tnrs time', 15), string.rjust(str(tnrs_time), 15)))
+    sys.stderr.write('%s %s\n' % (string.rjust('treestore time', 15), string.rjust(str(treestore_time), 15)))
 
