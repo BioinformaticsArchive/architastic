@@ -64,7 +64,7 @@ def proportion_type(string):
 
 
 #use argparse module to parse commandline input
-parser = ArgumentParser(description='attempt to run a full (but basic phylotastic workflow, i.e.\n input names->TNRS->Treestore')
+parser = ArgumentParser(description='run a full (but basic) phylotastic workflow, i.e. input names->TNRS->Treestore')
 
 tnrs_group = parser.add_argument_group('TNRS', 'Options relating to Taxonomic Name Resolution Service query')
 
@@ -84,7 +84,7 @@ parser.add_argument('-t', '--treestore', type=str, default=None,
                     help='choose a particular treestore to query. (current options = {opentree, rdftreestore}) default opentree')
 
 parser.add_argument('filenames', nargs="*", default=None, 
-                    help='a list of filenames to read for comma or newline delimited taxon names\n\tnone for stdin')
+                    help='a list of filenames to read for comma or newline delimited taxon names (none for stdin)')
 
 parser.add_argument('-o', '--output', type=str, default=None, 
                     help='file to write output to (default stdout)')
@@ -94,6 +94,9 @@ options = parser.parse_args()
 
 if options.no_tnrs and (options.min_match_score or options.pass_all_name_matches):
     sys.exit('Don\'t pass --min-match-score or --pass-all-name-matches with --no-tnrs')
+
+if options.min_match_score is None:
+    options.min_match_score = 0.5
 
 sleep_interval = 1.0
 sleep_interval_increase_factor = 1.5
@@ -238,7 +241,7 @@ def write_resolved_names(submitted_name_list, names_response, outp):
                 outp.write('%25s' % sn) 
                 outp.write('%s\n' % '\t'.join(['%25s' % a_match[f] for f in col_fields[1:]]))
         else:
-            outp.write('%s\t\t\t\t\t\n' % sn)
+            outp.write('%25s\t\t\t\t\t\n' % sn)
     return matches    
 
 #MTH & DJZ
@@ -303,7 +306,7 @@ for inp_stream in inp_stream_list:
 
         taxon_tuples = []
         for sub_tax_dict in all_tnrs_results:
-            for single_match_dict in sorted(sub_tax_dict[u'matches'], reverse=True, key=lambda m: m['score']):
+            for single_match_dict in sorted(sub_tax_dict[u'matches'], reverse=True, key=lambda m: float(m['score'])):
                 if float(single_match_dict['score']) >= options.min_match_score:
                     taxon_tuples.append((single_match_dict[u'matchedName'], single_match_dict[u'uri']))
                     if not options.pass_all_name_matches:

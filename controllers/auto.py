@@ -44,7 +44,8 @@ def tree():
 
     for arg in arg_translate.iterkeys():
         val = request.post_vars[arg]
-        if val:
+        #empty string is ok for a flag
+        if val is not None:
             args_to_pass.append(arg_translate[arg](val))
 
     #get the actual taxon list
